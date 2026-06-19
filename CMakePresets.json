@@ -1,0 +1,81 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "linux-debug-qt-auto",
+      "displayName": "Linux Debug (Qt Auto)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-debug-qt-auto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PYRAQT_QT_MAJOR_VERSION": "AUTO",
+        "PYRAQT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "linux-release-qt-auto",
+      "displayName": "Linux Release (Qt Auto)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/linux-release-qt-auto",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PYRAQT_QT_MAJOR_VERSION": "AUTO",
+        "PYRAQT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "qt5-debug",
+      "displayName": "Debug (Qt 5)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt5-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PYRAQT_QT_MAJOR_VERSION": "5",
+        "PYRAQT_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "qt6-debug",
+      "displayName": "Debug (Qt 6)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/qt6-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PYRAQT_QT_MAJOR_VERSION": "6",
+        "PYRAQT_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-debug-qt-auto",
+      "configurePreset": "linux-debug-qt-auto"
+    },
+    {
+      "name": "linux-release-qt-auto",
+      "configurePreset": "linux-release-qt-auto"
+    },
+    {
+      "name": "qt5-debug",
+      "configurePreset": "qt5-debug"
+    },
+    {
+      "name": "qt6-debug",
+      "configurePreset": "qt6-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug-qt-auto",
+      "configurePreset": "linux-debug-qt-auto",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

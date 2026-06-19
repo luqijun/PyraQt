@@ -1,0 +1,77 @@
+# Build directories
+build/
+cmake-build-*/
+out/
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
+CTestTestfile.cmake
+DartConfiguration.tcl
+_CPack_Packages/
+
+# Qt generated files
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+*.qm
+*_autogen/
+*_autogen.dir/
+
+# Compiled objects and libraries
+*.o
+*.a
+*.so
+*.so.*
+*.dylib
+*.lib
+*.exe
+*.out
+*.app
+*.dll
+*.exp
+
+# Ninja build
+build.ninja
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.user
+*.pro.user
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.Python
+
+# Dependencies
+vcpkg_installed/
+conan/
+
+# Testing
+Testing/
+CTestTestfile.cmake
+
+# Compiled translation files
+*.qm
+
+# Installation
+install_manifest.txt
+
+# System files
+.clang-format
+.clang-tidy

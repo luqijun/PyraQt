@@ -1,0 +1,20 @@
+QMainWindow {
+    background-color: #f5f7fb;
+}
+
+QMenuBar, QMenu, QToolBar, QStatusBar, QDockWidget {
+    background-color: #ffffff;
+    color: #1f2937;
+}
+
+QTextEdit, QPlainTextEdit {
+    background-color: #ffffff;
+    color: #111827;
+    selection-background-color: #c7d2fe;
+    border: 1px solid #dbe3ef;
+}
+
+QDockWidget::title {
+    background-color: #e5ebf5;
+    padding: 6px;
+}

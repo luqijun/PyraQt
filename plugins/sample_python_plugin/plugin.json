@@ -1,0 +1,17 @@
+{
+  "id": "sample_python_plugin",
+  "name": "Sample Python Plugin",
+  "version": "0.1.0",
+  "description": "Registers a simple Python-backed command.",
+  "entry": "__init__.py",
+  "enabledByDefault": true,
+  "commands": [
+    {
+      "id": "sample_python_plugin.say_hello",
+      "title": "Sample Python Plugin: Say Hello",
+      "description": "Run the sample Python plugin command.",
+      "script": "__init__.py",
+      "keywords": ["plugin", "python", "hello"]
+    }
+  ]
+}
