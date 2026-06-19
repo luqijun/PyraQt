@@ -13,6 +13,7 @@
       "binaryDir": "${sourceDir}/build/linux-debug-qt-auto",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "PYRAQT_QT_MAJOR_VERSION": "AUTO",
         "PYRAQT_BUILD_TESTS": "ON"
       }
@@ -24,6 +25,7 @@
       "binaryDir": "${sourceDir}/build/linux-release-qt-auto",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "PYRAQT_QT_MAJOR_VERSION": "AUTO",
         "PYRAQT_BUILD_TESTS": "ON"
       }
@@ -35,6 +37,7 @@
       "binaryDir": "${sourceDir}/build/qt5-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "PYRAQT_QT_MAJOR_VERSION": "5",
         "PYRAQT_BUILD_TESTS": "ON"
       }
@@ -46,6 +49,7 @@
       "binaryDir": "${sourceDir}/build/qt6-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
         "PYRAQT_QT_MAJOR_VERSION": "6",
         "PYRAQT_BUILD_TESTS": "ON"
       }
