@@ -1,4 +1,5 @@
 #include "core/theme/theme_manager.h"
+#include "core/modeling/model_import_manager.h"
 #include "ui/common/file_dialog_utils.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
@@ -44,7 +45,8 @@ void UiThemeTest::editorAppliesThemeAndTracksChanges()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QVERIFY(themeManager.setDarkTheme());
     pyraqt::ui::ScriptEditorWidget *editor = workspace.newDocument();
@@ -58,7 +60,7 @@ void UiThemeTest::editorAppliesThemeAndTracksChanges()
 void UiThemeTest::themedFileDialogUsesQtDialogSettings()
 {
     const pyraqt::ui::FileDialogRequest request{
-        QStringLiteral("Open Script"),
+        QStringLiteral("Open File"),
         QStringLiteral("/tmp"),
         QStringLiteral("Python Files (*.py);;All Files (*)"),
         QFileDialog::ExistingFile,

@@ -75,3 +75,5 @@ install_manifest.txt
 # System files
 .clang-format
 .clang-tidy
+
+QGIS

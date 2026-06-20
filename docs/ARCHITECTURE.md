@@ -11,11 +11,13 @@
 - `ui`: 主窗口、dock、菜单、状态栏
 
 当前 `Application` 在启动时装配 `ConfigManager`、`LogManager`、`ThemeManager`、`I18nManager`、`PythonRuntimeManager`、`PyraApiBridge`、`ScriptExecutionManager`、`CommandManager`、`PluginManager`、`UpdateManager`、`CrashRecoveryManager` 和 `WorkspaceManager`，并在退出时统一保存窗口布局与工作区会话。
+当构建启用 OCCT 时，还会装配 `ModelImportManager` 用于 STEP/BREP 导入，并由 UI 层创建真实 `V3d/AIS` 视口用于模型浏览。
 
 ## 核心服务
 
 - `ConfigManager`: JSON 文件保存应用偏好，`QSettings` 保存窗口几何和布局状态。
 - `LogManager`: 统一处理日志输出，默认使用 Qt 文件日志；检测到 `spdlog` 时可启用增强输出。
+- `ModelImportManager`: 检测并读取 `.stp/.step/.brep` 文件，构造可长期持有的模型文档、统计基础拓扑摘要并提取基础几何量；无 OCCT 时返回禁用提示。
 - `ThemeManager`: 通过 QSS 在 Light / Dark 主题间切换。
 - `I18nManager`: 加载 `translations/` 下的 `.qm` 文件，实现运行时语言切换。
 - `PythonRuntimeManager`: 解析解释器路径、版本和运行超时配置。
@@ -29,11 +31,18 @@
 
 ## UI Shell
 
-主窗口使用原生 `QDockWidget`，左侧包含本地文件浏览器和插件管理器，底部保留控制台和日志，中央区域为标签式脚本编辑工作区，并提供 Command Palette 作为统一命令入口。Phase 5 新增设置对话框、最近文件菜单、会话恢复、关闭标签、保存全部和状态栏文件/行列信息。
+主窗口使用原生 `QDockWidget`，左侧包含本地文件浏览器和插件管理器，底部保留控制台和日志，中央区域为标签式文档工作区：脚本文件进入编辑器标签，模型文件进入 OCCT 3D 视图标签，并提供 Command Palette 作为统一命令入口。右侧全局 `Properties` dock 根据当前活动上下文显示脚本占位、模型整体属性或当前单选子形属性。
 
 ## 工作区与设置
 
-工作区会话只保存已落盘文件路径、当前活动文件、最近文件和文件浏览器根目录，不保存未保存缓冲区。设置对话框提供应用级选项，包括主题、语言、Python 解释器、执行超时、启动恢复、文件浏览根目录和更新检查配置；项目级配置、快捷键自定义和敏感配置加密留给后续阶段。
+工作区会话只保存已落盘文件路径、当前活动文件、最近文件和文件浏览器根目录，不保存未保存缓冲区。会话恢复不区分脚本和模型路径，按扩展名重新路由。设置对话框提供应用级选项，包括主题、语言、Python 解释器、执行超时、启动恢复、文件浏览根目录和更新检查配置；项目级配置、快捷键自定义和敏感配置加密留给后续阶段。
+
+## 模型导入边界
+
+- 当前支持格式：`.stp`、`.step`、`.brep`
+- 当前提供只读 3D 浏览器，支持旋转、平移、缩放、Fit All、标准视角、线框/着色/带边着色、边/面/实体/点选择和 hover 高亮
+- 当前属性面板显示包围盒、拓扑统计以及长度/面积/体积等基础几何量
+- 当前不提供装配树、颜色/图层解析、隐藏/隔离、多选聚合、编辑与导出
 
 ## 发布管线
 

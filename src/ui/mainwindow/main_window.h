@@ -3,6 +3,7 @@
 #include <QMainWindow>
 
 class QAction;
+class QCloseEvent;
 class QLabel;
 class QMenu;
 class QPlainTextEdit;
@@ -14,6 +15,7 @@ class ConfigManager;
 class CrashRecoveryManager;
 class I18nManager;
 class LogManager;
+class ModelImportManager;
 class PluginManager;
 class PythonRuntimeManager;
 class ScriptExecutionManager;
@@ -27,6 +29,8 @@ namespace pyraqt::ui {
 class CommandPaletteDialog;
 class EditorWorkspaceWidget;
 class FileBrowserPanel;
+class ModelDocumentWidget;
+class ModelPropertiesPanel;
 class PluginManagerPanel;
 
 class MainWindow final : public QMainWindow {
@@ -36,6 +40,7 @@ public:
     MainWindow(
         core::ConfigManager &configManager,
         core::LogManager &logManager,
+        core::ModelImportManager &modelImportManager,
         core::ThemeManager &themeManager,
         core::I18nManager &i18nManager,
         core::PythonRuntimeManager &pythonRuntimeManager,
@@ -51,6 +56,7 @@ public:
 
 protected:
     void changeEvent(QEvent *event) override;
+    void closeEvent(QCloseEvent *event) override;
 
 private:
     void createCentralEditor();
@@ -60,7 +66,14 @@ private:
     void createScriptActions();
     void refreshRecentFilesMenu();
     void registerBuiltInCommands();
+    void updateModelActionStates();
+    bool openPath(const QString &filePath, bool addToRecent = true);
     void runCurrentScript();
+    void fitModelView();
+    void setModelViewPreset();
+    void setModelDisplayMode();
+    void setModelSelectionMode();
+    void clearModelSelection();
     void checkForUpdates();
     void openSettings();
     void reopenLastSession();
@@ -78,6 +91,7 @@ private:
 
     core::ConfigManager &m_configManager;
     core::LogManager &m_logManager;
+    core::ModelImportManager &m_modelImportManager;
     core::ThemeManager &m_themeManager;
     core::I18nManager &m_i18nManager;
     core::PythonRuntimeManager &m_pythonRuntimeManager;
@@ -89,6 +103,7 @@ private:
     core::CrashRecoveryManager &m_crashRecoveryManager;
 
     FileBrowserPanel *m_fileBrowserPanel = nullptr;
+    ModelPropertiesPanel *m_modelPropertiesPanel = nullptr;
     PluginManagerPanel *m_pluginManagerPanel = nullptr;
     EditorWorkspaceWidget *m_workspaceWidget = nullptr;
     QPlainTextEdit *m_console = nullptr;
@@ -114,6 +129,23 @@ private:
     QAction *m_settingsAction = nullptr;
     QAction *m_chooseFileBrowserRootAction = nullptr;
     QAction *m_checkUpdatesAction = nullptr;
+    QAction *m_fitAllAction = nullptr;
+    QAction *m_viewFrontAction = nullptr;
+    QAction *m_viewBackAction = nullptr;
+    QAction *m_viewLeftAction = nullptr;
+    QAction *m_viewRightAction = nullptr;
+    QAction *m_viewTopAction = nullptr;
+    QAction *m_viewBottomAction = nullptr;
+    QAction *m_viewIsoAction = nullptr;
+    QAction *m_wireframeAction = nullptr;
+    QAction *m_shadedAction = nullptr;
+    QAction *m_shadedEdgesAction = nullptr;
+    QAction *m_selectShapeAction = nullptr;
+    QAction *m_selectFaceAction = nullptr;
+    QAction *m_selectEdgeAction = nullptr;
+    QAction *m_selectVertexAction = nullptr;
+    QAction *m_clearSelectionAction = nullptr;
+    bool m_sessionSaved = false;
 };
 
 } // namespace pyraqt::ui

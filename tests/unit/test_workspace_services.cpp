@@ -1,5 +1,6 @@
 #include "core/config/config_manager.h"
 #include "core/logging/log_manager.h"
+#include "core/modeling/model_import_manager.h"
 #include "core/scripting/python_runtime_manager.h"
 #include "core/update/update_manager.h"
 #include "core/workspace/workspace_manager.h"
@@ -17,6 +18,7 @@ private slots:
     void workspaceDefaults();
     void recentFilesAreDeduplicatedAndTrimmed();
     void sessionFiltersMissingFiles();
+    void sessionKeepsSupportedModelFiles();
     void runtimeAndUpdateSettingsPersist();
 };
 
@@ -26,6 +28,16 @@ QString createFile(QTemporaryDir &dir, const QString &name)
     QFile file(path);
     file.open(QIODevice::WriteOnly | QIODevice::Text);
     file.write("print('hello')\n");
+    file.close();
+    return path;
+}
+
+QString createTextFile(QTemporaryDir &dir, const QString &name, const QByteArray &content)
+{
+    const QString path = dir.filePath(name);
+    QFile file(path);
+    file.open(QIODevice::WriteOnly | QIODevice::Text);
+    file.write(content);
     file.close();
     return path;
 }
@@ -82,6 +94,31 @@ void WorkspaceServicesTest::sessionFiltersMissingFiles()
     QCOMPARE(restored.openFiles.first(), QFileInfo(existing).canonicalFilePath());
     QCOMPARE(restored.activeFile, QFileInfo(existing).canonicalFilePath());
     QCOMPARE(restored.fileBrowserRoot, dir.path());
+}
+
+void WorkspaceServicesTest::sessionKeepsSupportedModelFiles()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    pyraqt::core::ModelImportManager importManager;
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString brepPath = createTextFile(dir, QStringLiteral("shape.brep"), QByteArray("BREP placeholder\n"));
+    QVERIFY(importManager.isSupportedFile(brepPath));
+
+    pyraqt::core::WorkspaceSession session;
+    session.openFiles = QStringList{brepPath};
+    session.activeFile = brepPath;
+    session.recentFiles = QStringList{brepPath};
+    session.fileBrowserRoot = dir.path();
+
+    workspaceManager.saveSession(session);
+    const pyraqt::core::WorkspaceSession restored = workspaceManager.restoreSession();
+
+    QCOMPARE(restored.openFiles.size(), 1);
+    QCOMPARE(restored.openFiles.first(), QFileInfo(brepPath).canonicalFilePath());
+    QCOMPARE(restored.activeFile, QFileInfo(brepPath).canonicalFilePath());
 }
 
 void WorkspaceServicesTest::runtimeAndUpdateSettingsPersist()

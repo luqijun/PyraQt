@@ -8,6 +8,7 @@ QObject *createPluginServicesTest();
 QObject *createRuntimeServicesTest();
 QObject *createUiThemeTest();
 QObject *createWorkspaceServicesTest();
+QObject *createModelingServicesTest();
 
 int main(int argc, char **argv)
 {
@@ -26,17 +27,20 @@ int main(int argc, char **argv)
     QObject *runtimeServicesTest = createRuntimeServicesTest();
     QObject *uiThemeTest = createUiThemeTest();
     QObject *workspaceServicesTest = createWorkspaceServicesTest();
+    QObject *modelingServicesTest = createModelingServicesTest();
     status |= QTest::qExec(coreServicesTest, argc, argv);
     status |= QTest::qExec(scriptingServicesTest, argc, argv);
     status |= QTest::qExec(pluginServicesTest, argc, argv);
     status |= QTest::qExec(runtimeServicesTest, argc, argv);
     status |= QTest::qExec(uiThemeTest, argc, argv);
     status |= QTest::qExec(workspaceServicesTest, argc, argv);
+    status |= QTest::qExec(modelingServicesTest, argc, argv);
     delete coreServicesTest;
     delete scriptingServicesTest;
     delete pluginServicesTest;
     delete runtimeServicesTest;
     delete uiThemeTest;
     delete workspaceServicesTest;
+    delete modelingServicesTest;
     return status;
 }

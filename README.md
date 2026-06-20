@@ -2,6 +2,8 @@
 
 PyraQt 是一个面向专业开发者的现代 Qt 桌面应用模板框架。当前仓库实现了 `Phase 5` 首版：在脚本、命令、插件和发布基础设施之上，补齐单窗口多标签脚本工作区、最近文件、会话恢复、真实文件浏览器和应用设置对话框。
 
+当前还额外提供 `Phase 7` 首版模型浏览能力：在检测到本机预装 OCCT 时，可打开 `.stp/.step/.brep` 文件，在中央标签页显示真实 3D 模型，并在右侧属性面板显示模型或当前选中子形的属性。
+
 ## 当前能力
 
 - `QMainWindow + QDockWidget` 桌面骨架
@@ -10,6 +12,7 @@ PyraQt 是一个面向专业开发者的现代 Qt 桌面应用模板框架。当
 - 最近文件、打开文件会话保存与恢复
 - 本地文件浏览器面板
 - 应用级设置对话框
+- 可选 OCCT 3D 模型浏览器（`.stp/.step/.brep`）
 - Python 子进程执行与停止
 - 最小 `pyra` API：`app`、`ui`、`fs`、`log`
 - C++ 动态插件与 Python 命令插件
@@ -32,6 +35,7 @@ PyraQt 是一个面向专业开发者的现代 Qt 桌面应用模板框架。当
 - Qt 5.15+ 或 Qt 6.5+
 - C++17 编译器
 - Qt5 完整脚本编辑体验需要 QScintilla 开发库
+- 如果需要 STEP/BREP 导入与 3D 浏览功能，需本机预装 OCCT 开发库
 
 ### 本地构建
 
@@ -75,10 +79,18 @@ Linux 下会在构建目录生成 `.deb`、`.tar.gz` 和 `.zip`。CI 的 Linux Q
 - `src/core/runtime`: 运行状态、异常退出检测与恢复提示
 - `src/core/workspace`: 最近文件、工作区会话与文件浏览根目录
 - `src/ui`: 主窗口和停靠面板
+- `src/core/modeling`: OCCT 文件导入、模型统计与属性提取
 - `resources`: QSS 主题与翻译资源
 - `tests`: QtTest 单元测试
 
 更详细设计见 [docs/ARCHITECTURE.md](/home/numbat/Projects/Misc/PyraQt/docs/ARCHITECTURE.md)。
+
+## 模型导入说明
+
+- 当前支持的模型格式仅有 `.stp`、`.step`、`.brep`
+- 当前能力包含导入、3D 浏览和属性查看，不包含建模编辑
+- 当前支持旋转、平移、缩放、Fit All、标准视角、线框/着色/带边着色、边/面/实体/点选择和单选属性查看
+- 如果 CMake 配置阶段未检测到 OCCT，应用仍可构建运行，但模型导入功能会禁用并在打开时给出提示
 
 ## 路线图
 

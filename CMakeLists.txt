@@ -16,6 +16,7 @@ option(PYRAQT_BUILD_TESTS "Build PyraQt tests" ON)
 option(PYRAQT_ENABLE_SPDLOG "Use spdlog when available" ON)
 option(PYRAQT_ENABLE_SCRIPTING "Build Phase 2 scripting features" ON)
 option(PYRAQT_ENABLE_PLUGINS "Build Phase 3 plugin features" ON)
+option(PYRAQT_ENABLE_OCCT "Enable OCCT-based model import when OpenCASCADE is available" ON)
 set(PYRAQT_QT_MAJOR_VERSION "AUTO" CACHE STRING "Qt major version to use: AUTO, 5, or 6")
 set_property(CACHE PYRAQT_QT_MAJOR_VERSION PROPERTY STRINGS AUTO 5 6)
 
@@ -34,6 +35,16 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
 if(PYRAQT_ENABLE_SPDLOG)
     find_package(spdlog QUIET)
+endif()
+
+set(PYRAQT_HAS_OCCT OFF)
+if(PYRAQT_ENABLE_OCCT)
+    find_package(OCCT QUIET)
+    if(OCCT_FOUND AND TARGET OCCT::OCCT)
+        set(PYRAQT_HAS_OCCT ON)
+    else()
+        message(WARNING "OCCT not found; STEP/BREP model import support will be disabled.")
+    endif()
 endif()
 
 set(PYRAQT_HAS_QSCINTILLA OFF)
@@ -60,6 +71,11 @@ add_library(pyraqt_core STATIC
     src/core/i18n/i18n_manager.h
     src/core/logging/log_manager.cpp
     src/core/logging/log_manager.h
+    src/core/modeling/model_import_manager.cpp
+    src/core/modeling/model_import_manager.h
+    src/core/modeling/model_property_service.cpp
+    src/core/modeling/model_property_service.h
+    src/core/modeling/model_types.h
     src/core/plugin/iplugin.h
     src/core/plugin/plugin_context.cpp
     src/core/plugin/plugin_context.h
@@ -97,6 +113,7 @@ target_link_libraries(pyraqt_core
         PyraQt::QtCore
         PyraQt::QtGui
         PyraQt::QtWidgets
+        PyraQt::QtOpenGLWidgets
         Python3::Python
     PRIVATE
         Threads::Threads
@@ -105,6 +122,10 @@ target_link_libraries(pyraqt_core
 if(spdlog_FOUND)
     target_link_libraries(pyraqt_core PRIVATE spdlog::spdlog)
     target_compile_definitions(pyraqt_core PRIVATE PYRAQT_HAS_SPDLOG=1)
+endif()
+
+if(PYRAQT_HAS_OCCT)
+    target_link_libraries(pyraqt_core PUBLIC OCCT::OCCT)
 endif()
 
 pyraqt_set_project_warnings(pyraqt_core)
@@ -121,12 +142,20 @@ add_executable(pyraqt
     src/ui/dialogs/settings_dialog.h
     src/ui/editor/editor_workspace_widget.cpp
     src/ui/editor/editor_workspace_widget.h
+    src/ui/editor/model_document_widget.cpp
+    src/ui/editor/model_document_widget.h
+    src/ui/editor/model_summary_widget.cpp
+    src/ui/editor/model_summary_widget.h
+    src/ui/editor/occt_model_view_widget.cpp
+    src/ui/editor/occt_model_view_widget.h
     src/ui/editor/editor_placeholder_widget.cpp
     src/ui/editor/editor_placeholder_widget.h
     src/ui/editor/script_editor_widget.cpp
     src/ui/editor/script_editor_widget.h
     src/ui/mainwindow/main_window.cpp
     src/ui/mainwindow/main_window.h
+    src/ui/panels/properties/model_properties_panel.cpp
+    src/ui/panels/properties/model_properties_panel.h
     src/ui/panels/files/file_browser_panel.cpp
     src/ui/panels/files/file_browser_panel.h
     src/ui/panels/plugins/plugin_manager_panel.cpp
@@ -141,6 +170,7 @@ target_link_libraries(pyraqt
         PyraQt::QtCore
         PyraQt::QtGui
         PyraQt::QtWidgets
+        PyraQt::QtOpenGLWidgets
 )
 
 if(PYRAQT_HAS_QSCINTILLA)
@@ -151,6 +181,7 @@ endif()
 target_compile_definitions(pyraqt_core
     PUBLIC
         PYRAQT_HAS_QSCINTILLA=$<BOOL:${PYRAQT_HAS_QSCINTILLA}>
+        PYRAQT_HAS_OCCT=$<BOOL:${PYRAQT_HAS_OCCT}>
 )
 
 pyraqt_set_project_warnings(pyraqt)

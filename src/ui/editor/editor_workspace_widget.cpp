@@ -1,18 +1,24 @@
 #include "ui/editor/editor_workspace_widget.h"
 
+#include "core/modeling/model_import_manager.h"
+#include "core/modeling/model_types.h"
 #include "core/theme/theme_manager.h"
+#include "ui/editor/model_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
 
 #include <QFileInfo>
-#include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
 namespace pyraqt::ui {
 
-EditorWorkspaceWidget::EditorWorkspaceWidget(core::ThemeManager &themeManager, QWidget *parent)
+EditorWorkspaceWidget::EditorWorkspaceWidget(
+    core::ThemeManager &themeManager,
+    core::ModelImportManager &modelImportManager,
+    QWidget *parent)
     : QWidget(parent)
     , m_themeManager(themeManager)
+    , m_modelImportManager(modelImportManager)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -21,19 +27,13 @@ EditorWorkspaceWidget::EditorWorkspaceWidget(core::ThemeManager &themeManager, Q
     m_tabWidget->setTabsClosable(true);
     m_tabWidget->setDocumentMode(true);
     m_tabWidget->setMovable(true);
-    m_tabWidget->setAccessibleName(tr("Editor Workspace"));
-    m_tabWidget->setAccessibleDescription(tr("Tabbed script editor workspace"));
+    m_tabWidget->setAccessibleName(tr("Document Workspace"));
+    m_tabWidget->setAccessibleDescription(tr("Tabbed workspace for scripts and imported models"));
     layout->addWidget(m_tabWidget);
 
-    connect(m_tabWidget, &QTabWidget::currentChanged, this, [this](int index) {
-        ScriptEditorWidget *editor = qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index));
-        emit currentFilePathChanged(editor != nullptr ? editor->currentFilePath() : QString());
-        emit documentModificationChanged(editor != nullptr && editor->isModified());
-        emit editorAvailabilityChanged(editor != nullptr && editor->isAvailable());
+    connect(m_tabWidget, &QTabWidget::currentChanged, this, [this](int) {
+        emitCurrentWidgetState();
         emit openFilesChanged(openFilePaths());
-        if (editor != nullptr) {
-            emit currentCursorChanged(editor->currentLine(), editor->currentColumn());
-        }
     });
     connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
         closeEditorInternal(index);
@@ -57,17 +57,31 @@ ScriptEditorWidget *EditorWorkspaceWidget::newDocument()
     return editor;
 }
 
-bool EditorWorkspaceWidget::openFile(const QString &filePath)
+bool EditorWorkspaceWidget::openPath(const QString &filePath)
 {
-    const int existingIndex = findEditorByPath(filePath);
+    const int existingIndex = findWidgetByPath(filePath);
     if (existingIndex >= 0) {
         m_tabWidget->setCurrentIndex(existingIndex);
+        return true;
+    }
+
+    if (m_modelImportManager.isSupportedFile(filePath)) {
+        const core::ModelDocument document = m_modelImportManager.importFile(filePath);
+        if (!document.isValid) {
+            emit openPathFailed(filePath, document.summary.errorMessage);
+        }
+        ModelDocumentWidget *documentWidget = createModelDocumentWidget(document);
+        const int index = m_tabWidget->addTab(documentWidget, QFileInfo(filePath).fileName());
+        m_tabWidget->setCurrentIndex(index);
+        updateTabTitle(index);
+        emit openFilesChanged(openFilePaths());
         return true;
     }
 
     ScriptEditorWidget *editor = createEditor();
     if (!editor->loadFromFile(filePath)) {
         editor->deleteLater();
+        emit openPathFailed(filePath, tr("Failed to open file."));
         return false;
     }
 
@@ -152,10 +166,37 @@ ScriptEditorWidget *EditorWorkspaceWidget::editorAt(int index) const
     return qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index));
 }
 
+ModelDocumentWidget *EditorWorkspaceWidget::currentModelDocumentWidget() const
+{
+    return qobject_cast<ModelDocumentWidget *>(m_tabWidget->currentWidget());
+}
+
+pyraqt::core::ModelDocument EditorWorkspaceWidget::currentModelDocument() const
+{
+    if (auto *documentWidget = currentModelDocumentWidget()) {
+        return documentWidget->document();
+    }
+    return {};
+}
+
+pyraqt::core::ModelSelectionInfo EditorWorkspaceWidget::currentModelSelection() const
+{
+    if (auto *documentWidget = currentModelDocumentWidget()) {
+        return documentWidget->selectionInfo();
+    }
+    return {};
+}
+
 QString EditorWorkspaceWidget::currentFilePath() const
 {
-    ScriptEditorWidget *editor = currentEditor();
-    return editor != nullptr ? editor->currentFilePath() : QString();
+    QWidget *widget = m_tabWidget->currentWidget();
+    if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
+        return editor->currentFilePath();
+    }
+    if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+        return documentWidget->document().filePath;
+    }
+    return {};
 }
 
 bool EditorWorkspaceWidget::hasOpenEditors() const
@@ -178,9 +219,16 @@ QStringList EditorWorkspaceWidget::openFilePaths() const
 {
     QStringList files;
     for (int index = 0; index < m_tabWidget->count(); ++index) {
-        auto *editor = qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index));
-        if (editor != nullptr && !editor->currentFilePath().isEmpty()) {
-            files.push_back(editor->currentFilePath());
+        QWidget *widget = m_tabWidget->widget(index);
+        QString filePath;
+        if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
+            filePath = editor->currentFilePath();
+        } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+            filePath = documentWidget->document().filePath;
+        }
+
+        if (!filePath.isEmpty()) {
+            files.push_back(filePath);
         }
     }
     return files;
@@ -204,11 +252,11 @@ void EditorWorkspaceWidget::restoreSession(const core::WorkspaceSession &session
     }
 
     for (const QString &filePath : session.openFiles) {
-        openFile(filePath);
+        openPath(filePath);
     }
 
     if (!session.activeFile.isEmpty()) {
-        const int activeIndex = findEditorByPath(session.activeFile);
+        const int activeIndex = findWidgetByPath(session.activeFile);
         if (activeIndex >= 0) {
             m_tabWidget->setCurrentIndex(activeIndex);
         }
@@ -223,24 +271,62 @@ ScriptEditorWidget *EditorWorkspaceWidget::createEditor()
     return editor;
 }
 
+ModelDocumentWidget *EditorWorkspaceWidget::createModelDocumentWidget(const pyraqt::core::ModelDocument &document)
+{
+    auto *widget = new ModelDocumentWidget(this);
+    widget->setDocument(document);
+    connectModelDocumentWidget(widget);
+    return widget;
+}
+
 void EditorWorkspaceWidget::updateTabTitle(int index)
 {
-    auto *editor = qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index));
-    if (editor == nullptr) {
+    QWidget *widget = m_tabWidget->widget(index);
+    if (widget == nullptr) {
         return;
     }
-    QString title = QFileInfo(editor->currentFilePath()).fileName();
-    if (title.isEmpty()) {
-        title = m_tabWidget->tabText(index);
+
+    QString title;
+    QString toolTip;
+
+    if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
+        title = QFileInfo(editor->currentFilePath()).fileName();
         if (title.isEmpty()) {
-            title = tr("Untitled");
+            title = m_tabWidget->tabText(index);
+            if (title.isEmpty()) {
+                title = tr("Untitled");
+            }
+        }
+        if (editor->isModified()) {
+            title.append('*');
+        }
+        toolTip = editor->currentFilePath();
+    } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+        toolTip = documentWidget->document().filePath;
+        title = QFileInfo(toolTip).fileName();
+        if (title.isEmpty()) {
+            title = tr("Model");
         }
     }
-    if (editor->isModified()) {
-        title.append('*');
-    }
+
     m_tabWidget->setTabText(index, title);
-    m_tabWidget->setTabToolTip(index, editor->currentFilePath());
+    m_tabWidget->setTabToolTip(index, toolTip);
+}
+
+void EditorWorkspaceWidget::connectModelDocumentWidget(ModelDocumentWidget *widget)
+{
+    connect(widget, &ModelDocumentWidget::displayModeChanged, this, [this](pyraqt::core::ModelDisplayMode) {
+        emitCurrentWidgetState();
+    });
+    connect(widget, &ModelDocumentWidget::selectionModeChanged, this, [this](pyraqt::core::ModelSelectionMode) {
+        emitCurrentWidgetState();
+    });
+    connect(widget, &ModelDocumentWidget::selectionInfoChanged, this, [this](const pyraqt::core::ModelSelectionInfo &selection) {
+        emit modelSelectionChanged(selection);
+    });
+    connect(widget, &ModelDocumentWidget::statusMessageChanged, this, [this](const QString &) {
+        emitCurrentWidgetState();
+    });
 }
 
 void EditorWorkspaceWidget::connectEditor(ScriptEditorWidget *editor)
@@ -271,6 +357,37 @@ void EditorWorkspaceWidget::connectEditor(ScriptEditorWidget *editor)
     });
 }
 
+void EditorWorkspaceWidget::emitCurrentWidgetState()
+{
+    QWidget *widget = m_tabWidget->currentWidget();
+    if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
+        emit currentFilePathChanged(editor->currentFilePath());
+        emit documentModificationChanged(editor->isModified());
+        emit editorAvailabilityChanged(editor->isAvailable());
+        emit currentCursorChanged(editor->currentLine(), editor->currentColumn());
+        emit modelDocumentChanged({});
+        emit modelSelectionChanged({});
+        return;
+    }
+
+    if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+        emit currentFilePathChanged(documentWidget->document().filePath);
+        emit documentModificationChanged(false);
+        emit editorAvailabilityChanged(false);
+        emit currentCursorChanged(0, 0);
+        emit modelDocumentChanged(documentWidget->document());
+        emit modelSelectionChanged(documentWidget->selectionInfo());
+        return;
+    }
+
+    emit currentFilePathChanged({});
+    emit documentModificationChanged(false);
+    emit editorAvailabilityChanged(false);
+    emit currentCursorChanged(0, 0);
+    emit modelDocumentChanged({});
+    emit modelSelectionChanged({});
+}
+
 int EditorWorkspaceWidget::findEditorByPath(const QString &filePath) const
 {
     for (int index = 0; index < m_tabWidget->count(); ++index) {
@@ -282,14 +399,26 @@ int EditorWorkspaceWidget::findEditorByPath(const QString &filePath) const
     return -1;
 }
 
+int EditorWorkspaceWidget::findWidgetByPath(const QString &filePath) const
+{
+    const int editorIndex = findEditorByPath(filePath);
+    if (editorIndex >= 0) {
+        return editorIndex;
+    }
+
+    for (int index = 0; index < m_tabWidget->count(); ++index) {
+        auto *documentWidget = qobject_cast<ModelDocumentWidget *>(m_tabWidget->widget(index));
+        if (documentWidget != nullptr && documentWidget->document().filePath == filePath) {
+            return index;
+        }
+    }
+    return -1;
+}
+
 bool EditorWorkspaceWidget::closeEditorInternal(int index)
 {
     auto *editor = qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index));
-    if (editor == nullptr) {
-        return true;
-    }
-
-    if (editor->isModified()) {
+    if (editor != nullptr && editor->isModified()) {
         bool accepted = false;
         emit requestCloseConfirmation(
             tr("Close Script"),
@@ -301,11 +430,17 @@ bool EditorWorkspaceWidget::closeEditorInternal(int index)
     }
 
     QWidget *widget = m_tabWidget->widget(index);
+    if (widget == nullptr) {
+        return true;
+    }
+
     m_tabWidget->removeTab(index);
     widget->deleteLater();
     emit openFilesChanged(openFilePaths());
     if (m_tabWidget->count() == 0) {
         newDocument();
+    } else {
+        emitCurrentWidgetState();
     }
     return true;
 }

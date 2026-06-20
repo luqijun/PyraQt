@@ -7,21 +7,28 @@
 class QTabWidget;
 
 namespace pyraqt::core {
+class ModelImportManager;
+struct ModelDocument;
+struct ModelSelectionInfo;
 class ThemeManager;
 } // namespace pyraqt::core
 
 namespace pyraqt::ui {
 
+class ModelDocumentWidget;
 class ScriptEditorWidget;
 
 class EditorWorkspaceWidget final : public QWidget {
     Q_OBJECT
 
 public:
-    explicit EditorWorkspaceWidget(core::ThemeManager &themeManager, QWidget *parent = nullptr);
+    explicit EditorWorkspaceWidget(
+        core::ThemeManager &themeManager,
+        core::ModelImportManager &modelImportManager,
+        QWidget *parent = nullptr);
 
     ScriptEditorWidget *newDocument();
-    bool openFile(const QString &filePath);
+    bool openPath(const QString &filePath);
     bool saveCurrent();
     bool saveAll();
     bool saveCurrentAs(const QString &filePath);
@@ -32,6 +39,9 @@ public:
 
     [[nodiscard]] ScriptEditorWidget *currentEditor() const;
     [[nodiscard]] ScriptEditorWidget *editorAt(int index) const;
+    [[nodiscard]] ModelDocumentWidget *currentModelDocumentWidget() const;
+    [[nodiscard]] pyraqt::core::ModelDocument currentModelDocument() const;
+    [[nodiscard]] pyraqt::core::ModelSelectionInfo currentModelSelection() const;
     [[nodiscard]] QString currentFilePath() const;
     [[nodiscard]] bool hasOpenEditors() const;
     [[nodiscard]] bool hasAvailableEditor() const;
@@ -45,17 +55,25 @@ signals:
     void currentCursorChanged(int line, int column);
     void documentModificationChanged(bool modified);
     void editorAvailabilityChanged(bool available);
+    void modelDocumentChanged(const pyraqt::core::ModelDocument &document);
+    void modelSelectionChanged(const pyraqt::core::ModelSelectionInfo &selection);
     void openFilesChanged(const QStringList &files);
     void requestCloseConfirmation(const QString &title, const QString &message, bool *accepted);
+    void openPathFailed(const QString &filePath, const QString &message);
 
 private:
     ScriptEditorWidget *createEditor();
+    ModelDocumentWidget *createModelDocumentWidget(const pyraqt::core::ModelDocument &document);
     void updateTabTitle(int index);
     void connectEditor(ScriptEditorWidget *editor);
+    void connectModelDocumentWidget(ModelDocumentWidget *widget);
+    void emitCurrentWidgetState();
     int findEditorByPath(const QString &filePath) const;
+    int findWidgetByPath(const QString &filePath) const;
     bool closeEditorInternal(int index);
 
     core::ThemeManager &m_themeManager;
+    core::ModelImportManager &m_modelImportManager;
     QTabWidget *m_tabWidget = nullptr;
     int m_untitledCounter = 1;
 };
