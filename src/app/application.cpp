@@ -55,7 +55,7 @@ bool Application::initialize()
     m_crashRecoveryManager->markAppStarted();
 
     m_i18nManager->setLocale(m_configManager->value(QStringLiteral("locale"), QStringLiteral("zh_CN")).toString());
-    m_themeManager->setTheme(m_configManager->value(QStringLiteral("theme"), QStringLiteral("dark")).toString());
+    m_themeManager->setTheme(m_configManager->value(QStringLiteral("theme"), QStringLiteral("light")).toString());
 
     m_mainWindow = std::make_unique<ui::MainWindow>(
         *m_configManager,

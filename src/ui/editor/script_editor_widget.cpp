@@ -30,7 +30,7 @@ ScriptEditorWidget::ScriptEditorWidget(QWidget *parent)
     m_editor->setMarginWidth(1, QStringLiteral("00000"));
     m_editor->setBraceMatching(QsciScintilla::StrictBraceMatch);
     m_editor->setCaretLineVisible(true);
-    m_editor->setCaretLineBackgroundColor(QColor(QStringLiteral("#1d2433")));
+    m_editor->setCaretLineBackgroundColor(QColor(QStringLiteral("#bccbee")));
     m_editor->setText(QStringLiteral("# PyraQt script\nimport pyra\n\npyra.log.info('Ready to script')\n"));
     connect(m_editor, &QsciScintilla::textChanged, this, [this] {
         setModified(true);
