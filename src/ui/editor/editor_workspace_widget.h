@@ -6,6 +6,10 @@
 
 class QTabWidget;
 
+namespace pyraqt::core {
+class ThemeManager;
+} // namespace pyraqt::core
+
 namespace pyraqt::ui {
 
 class ScriptEditorWidget;
@@ -14,7 +18,7 @@ class EditorWorkspaceWidget final : public QWidget {
     Q_OBJECT
 
 public:
-    explicit EditorWorkspaceWidget(QWidget *parent = nullptr);
+    explicit EditorWorkspaceWidget(core::ThemeManager &themeManager, QWidget *parent = nullptr);
 
     ScriptEditorWidget *newDocument();
     bool openFile(const QString &filePath);
@@ -51,6 +55,7 @@ private:
     int findEditorByPath(const QString &filePath) const;
     bool closeEditorInternal(int index);
 
+    core::ThemeManager &m_themeManager;
     QTabWidget *m_tabWidget = nullptr;
     int m_untitledCounter = 1;
 };

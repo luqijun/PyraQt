@@ -6,7 +6,14 @@ add_executable(pyraqt_core_tests
     unit/test_plugin_services.cpp
     unit/test_runtime_services.cpp
     unit/test_scripting_services.cpp
+    unit/test_ui_theme.cpp
     unit/test_workspace_services.cpp
+    ../src/ui/common/file_dialog_utils.cpp
+    ../src/ui/common/file_dialog_utils.h
+    ../src/ui/editor/editor_workspace_widget.cpp
+    ../src/ui/editor/editor_workspace_widget.h
+    ../src/ui/editor/script_editor_widget.cpp
+    ../src/ui/editor/script_editor_widget.h
     ../resources/pyraqt_resources.qrc
 )
 
@@ -18,6 +25,10 @@ target_link_libraries(pyraqt_core_tests
         PyraQt::QtWidgets
         PyraQt::QtTest
 )
+
+if(PYRAQT_HAS_QSCINTILLA)
+    target_link_libraries(pyraqt_core_tests PRIVATE QScintilla::QScintilla)
+endif()
 
 pyraqt_set_project_warnings(pyraqt_core_tests)
 

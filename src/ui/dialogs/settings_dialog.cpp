@@ -6,9 +6,9 @@
 #include "core/theme/theme_manager.h"
 #include "core/update/update_manager.h"
 #include "core/workspace/workspace_manager.h"
+#include "ui/common/file_dialog_utils.h"
 
 #include <QDialogButtonBox>
-#include <QFileDialog>
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -132,7 +132,15 @@ QWidget *SettingsDialog::createGeneralPage()
     connect(m_languageCombo, &QComboBox::currentTextChanged, &m_i18nManager, &core::I18nManager::setLocale);
     connect(m_restoreSessionCheck, &QCheckBox::toggled, &m_workspaceManager, &core::WorkspaceManager::setRestoreLastSessionEnabled);
     connect(browseButton, &QPushButton::clicked, this, [this] {
-        const QString directory = QFileDialog::getExistingDirectory(this, tr("Choose File Browser Root"), m_browserRootEdit->text());
+        const QString directory = getThemedExistingDirectory(
+            {
+                tr("Choose File Browser Root"),
+                m_browserRootEdit->text(),
+                QString(),
+                QFileDialog::Directory,
+                QFileDialog::AcceptOpen,
+            },
+            this);
         if (!directory.isEmpty()) {
             m_browserRootEdit->setText(directory);
             m_workspaceManager.setFileBrowserRoot(directory);
@@ -176,7 +184,15 @@ QWidget *SettingsDialog::createPythonPage()
     });
     connect(m_timeoutSpin, qOverload<int>(&QSpinBox::valueChanged), &m_pythonRuntimeManager, &core::PythonRuntimeManager::setExecutionTimeoutMs);
     connect(browseButton, &QPushButton::clicked, this, [this] {
-        const QString filePath = QFileDialog::getOpenFileName(this, tr("Choose Python Interpreter"), m_interpreterEdit->text());
+        const QString filePath = getThemedOpenFileName(
+            {
+                tr("Choose Python Interpreter"),
+                m_interpreterEdit->text(),
+                QString(),
+                QFileDialog::ExistingFile,
+                QFileDialog::AcceptOpen,
+            },
+            this);
         if (!filePath.isEmpty()) {
             m_interpreterEdit->setText(filePath);
             m_pythonRuntimeManager.setInterpreterPath(filePath);

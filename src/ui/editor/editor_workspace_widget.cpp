@@ -1,5 +1,6 @@
 #include "ui/editor/editor_workspace_widget.h"
 
+#include "core/theme/theme_manager.h"
 #include "ui/editor/script_editor_widget.h"
 
 #include <QFileInfo>
@@ -9,8 +10,9 @@
 
 namespace pyraqt::ui {
 
-EditorWorkspaceWidget::EditorWorkspaceWidget(QWidget *parent)
+EditorWorkspaceWidget::EditorWorkspaceWidget(core::ThemeManager &themeManager, QWidget *parent)
     : QWidget(parent)
+    , m_themeManager(themeManager)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -35,6 +37,13 @@ EditorWorkspaceWidget::EditorWorkspaceWidget(QWidget *parent)
     });
     connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
         closeEditorInternal(index);
+    });
+    connect(&m_themeManager, &core::ThemeManager::themeChanged, this, [this](const QString &themeName) {
+        for (int index = 0; index < m_tabWidget->count(); ++index) {
+            if (auto *editor = qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index))) {
+                editor->applyTheme(themeName);
+            }
+        }
     });
 }
 
@@ -209,6 +218,7 @@ void EditorWorkspaceWidget::restoreSession(const core::WorkspaceSession &session
 ScriptEditorWidget *EditorWorkspaceWidget::createEditor()
 {
     auto *editor = new ScriptEditorWidget(this);
+    editor->applyTheme(m_themeManager.currentTheme());
     connectEditor(editor);
     return editor;
 }

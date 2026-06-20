@@ -15,6 +15,7 @@
 #include "core/workspace/workspace_manager.h"
 #include "ui/dialogs/command_palette_dialog.h"
 #include "ui/dialogs/settings_dialog.h"
+#include "ui/common/file_dialog_utils.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
 #include "ui/panels/files/file_browser_panel.h"
@@ -163,7 +164,7 @@ void MainWindow::changeEvent(QEvent *event)
 
 void MainWindow::createCentralEditor()
 {
-    m_workspaceWidget = new EditorWorkspaceWidget(this);
+    m_workspaceWidget = new EditorWorkspaceWidget(m_themeManager, this);
     m_workspaceWidget->setObjectName(QStringLiteral("editorWorkspace"));
     setCentralWidget(m_workspaceWidget);
 
@@ -346,11 +347,15 @@ void MainWindow::createScriptActions()
     });
     connect(m_openScriptAction, &QAction::triggered, this, [this] {
         const QString startDir = m_workspaceManager.fileBrowserRoot();
-        const QString filePath = QFileDialog::getOpenFileName(
-            this,
-            tr("Open Python Script"),
-            startDir,
-            tr("Python Files (*.py);;All Files (*)"));
+        const QString filePath = getThemedOpenFileName(
+            {
+                tr("Open Python Script"),
+                startDir,
+                tr("Python Files (*.py);;All Files (*)"),
+                QFileDialog::ExistingFile,
+                QFileDialog::AcceptOpen,
+            },
+            this);
         if (!filePath.isEmpty() && m_workspaceWidget->openFile(filePath)) {
             m_workspaceManager.addRecentFile(filePath);
         }
@@ -533,7 +538,15 @@ void MainWindow::reopenLastSession()
 
 void MainWindow::chooseFileBrowserRoot()
 {
-    const QString directory = QFileDialog::getExistingDirectory(this, tr("Choose File Browser Root"), m_workspaceManager.fileBrowserRoot());
+    const QString directory = getThemedExistingDirectory(
+        {
+            tr("Choose File Browser Root"),
+            m_workspaceManager.fileBrowserRoot(),
+            QString(),
+            QFileDialog::Directory,
+            QFileDialog::AcceptOpen,
+        },
+        this);
     if (directory.isEmpty()) {
         return;
     }
@@ -603,11 +616,15 @@ bool MainWindow::saveCurrentScriptIfNeeded()
     QString filePath = editor->currentFilePath();
     if (filePath.isEmpty()) {
         const QString startDir = m_workspaceManager.fileBrowserRoot();
-        filePath = QFileDialog::getSaveFileName(
-            this,
-            tr("Save Python Script"),
-            startDir,
-            tr("Python Files (*.py);;All Files (*)"));
+        filePath = getThemedSaveFileName(
+            {
+                tr("Save Python Script"),
+                startDir,
+                tr("Python Files (*.py);;All Files (*)"),
+                QFileDialog::AnyFile,
+                QFileDialog::AcceptSave,
+            },
+            this);
         if (filePath.isEmpty()) {
             return false;
         }

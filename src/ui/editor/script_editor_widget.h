@@ -25,12 +25,14 @@ public:
     [[nodiscard]] bool isModified() const;
     [[nodiscard]] int currentLine() const;
     [[nodiscard]] int currentColumn() const;
+    [[nodiscard]] QString appliedTheme() const;
 
     void newDocument();
     bool loadFromFile(const QString &filePath);
     bool save();
     bool saveAs(const QString &filePath);
     void setEditorMessage(const QString &message);
+    void applyTheme(const QString &themeName);
 
 signals:
     void modificationChanged(bool modified);
@@ -48,6 +50,7 @@ private:
     QLabel *m_placeholder = nullptr;
 #endif
     QString m_currentFilePath;
+    QString m_appliedTheme = QStringLiteral("light");
     bool m_modified = false;
 };
 

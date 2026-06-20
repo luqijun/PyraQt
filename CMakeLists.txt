@@ -113,6 +113,8 @@ add_executable(pyraqt
     src/app/application.cpp
     src/app/application.h
     src/app/main.cpp
+    src/ui/common/file_dialog_utils.cpp
+    src/ui/common/file_dialog_utils.h
     src/ui/dialogs/command_palette_dialog.cpp
     src/ui/dialogs/command_palette_dialog.h
     src/ui/dialogs/settings_dialog.cpp

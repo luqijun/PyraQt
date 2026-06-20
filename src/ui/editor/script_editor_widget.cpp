@@ -3,6 +3,7 @@
 #include <QColor>
 #include <QFile>
 #include <QLabel>
+#include <QPalette>
 #include <QTextEdit>
 #include <QVBoxLayout>
 
@@ -45,6 +46,8 @@ ScriptEditorWidget::ScriptEditorWidget(QWidget *parent)
     m_placeholder->setWordWrap(true);
     layout->addWidget(m_placeholder);
 #endif
+
+    applyTheme(m_appliedTheme);
 }
 
 bool ScriptEditorWidget::isAvailable() const
@@ -109,6 +112,11 @@ int ScriptEditorWidget::currentColumn() const
 #endif
 }
 
+QString ScriptEditorWidget::appliedTheme() const
+{
+    return m_appliedTheme;
+}
+
 void ScriptEditorWidget::newDocument()
 {
 #if PYRAQT_HAS_QSCINTILLA
@@ -167,6 +175,49 @@ void ScriptEditorWidget::setEditorMessage(const QString &message)
 #else
     if (m_placeholder != nullptr) {
         m_placeholder->setText(message);
+    }
+#endif
+}
+
+void ScriptEditorWidget::applyTheme(const QString &themeName)
+{
+    m_appliedTheme = themeName;
+
+#if PYRAQT_HAS_QSCINTILLA
+    const bool darkTheme = themeName == QStringLiteral("dark");
+    const QColor background = darkTheme ? QColor(QStringLiteral("#0f1724")) : QColor(QStringLiteral("#ffffff"));
+    const QColor foreground = darkTheme ? QColor(QStringLiteral("#e5edf7")) : QColor(QStringLiteral("#111827"));
+    const QColor selection = darkTheme ? QColor(QStringLiteral("#3554b4")) : QColor(QStringLiteral("#c7d2fe"));
+    const QColor caretLine = darkTheme ? QColor(QStringLiteral("#1b2436")) : QColor(QStringLiteral("#e8eef9"));
+    const QColor marginBackground = darkTheme ? QColor(QStringLiteral("#161d2d")) : QColor(QStringLiteral("#f3f6fb"));
+    const QColor marginForeground = darkTheme ? QColor(QStringLiteral("#93a4bd")) : QColor(QStringLiteral("#5f6f86"));
+    const QColor braceBackground = darkTheme ? QColor(QStringLiteral("#223251")) : QColor(QStringLiteral("#dbe7ff"));
+    const QColor braceForeground = darkTheme ? QColor(QStringLiteral("#f8fbff")) : QColor(QStringLiteral("#1f2937"));
+
+    m_editor->setPaper(background);
+    m_editor->setColor(foreground);
+    m_editor->setSelectionBackgroundColor(selection);
+    m_editor->setSelectionForegroundColor(foreground);
+    m_editor->setCaretLineBackgroundColor(caretLine);
+    m_editor->setCaretForegroundColor(foreground);
+    m_editor->setMatchedBraceBackgroundColor(braceBackground);
+    m_editor->setMatchedBraceForegroundColor(braceForeground);
+    m_editor->setMarginsBackgroundColor(marginBackground);
+    m_editor->setMarginsForegroundColor(marginForeground);
+    m_editor->setFoldMarginColors(marginBackground, marginBackground);
+
+    if (m_lexer != nullptr) {
+        m_lexer->setDefaultPaper(background);
+        m_lexer->setPaper(background);
+        m_lexer->setColor(foreground);
+        m_lexer->setDefaultColor(foreground);
+    }
+#else
+    if (m_placeholder != nullptr) {
+        QPalette palette = m_placeholder->palette();
+        palette.setColor(QPalette::WindowText,
+            themeName == QStringLiteral("dark") ? QColor(QStringLiteral("#e5edf7")) : QColor(QStringLiteral("#111827")));
+        m_placeholder->setPalette(palette);
     }
 #endif
 }
