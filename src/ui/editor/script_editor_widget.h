@@ -21,6 +21,11 @@ class ScriptEditorWidget final : public QWidget {
     Q_OBJECT
 
 public:
+    enum class DocumentMode {
+        PlainText,
+        Python,
+    };
+
     explicit ScriptEditorWidget(core::PythonRuntimeManager *runtimeManager = nullptr, QWidget *parent = nullptr);
     ~ScriptEditorWidget() override;
 
@@ -32,6 +37,8 @@ public:
     [[nodiscard]] int currentLine() const;
     [[nodiscard]] int currentColumn() const;
     [[nodiscard]] QString appliedTheme() const;
+    [[nodiscard]] DocumentMode documentMode() const;
+    [[nodiscard]] bool isPythonDocument() const;
     [[nodiscard]] bool codeCompletionEnabled() const;
     [[nodiscard]] bool dotCompletionEnabled() const;
     [[nodiscard]] QStringList completionWords() const;
@@ -55,6 +62,8 @@ signals:
     void cursorPositionChanged(int line, int column);
 
 private:
+    void setDocumentMode(DocumentMode mode);
+    void updateDocumentModeFromPath(const QString &filePath);
     void configureCodeCompletion();
     [[nodiscard]] QStringList editorMemberCompletions() const;
     [[nodiscard]] QString contextCodeBeforeCursor(int prefixLength) const;
@@ -78,6 +87,7 @@ private:
     QStringList m_completionWords;
     QStringList m_editorMemberWords;
     QStringList m_lastMemberCompletionWords;
+    DocumentMode m_documentMode = DocumentMode::PlainText;
     bool m_codeCompletionEnabled = false;
     bool m_dotCompletionEnabled = false;
     bool m_modified = false;

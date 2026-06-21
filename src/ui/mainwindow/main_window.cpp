@@ -20,6 +20,7 @@
 #include "ui/dialogs/python_tools_dialog.h"
 #include "ui/dialogs/settings_dialog.h"
 #include "ui/common/file_dialog_utils.h"
+#include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/model_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
@@ -198,8 +199,12 @@ void MainWindow::createCentralEditor()
         if (m_documentStatusLabel != nullptr) {
             m_documentStatusLabel->setText(modified ? tr("Document: Modified") : tr("Document: Saved"));
         }
+        updateTabActionStates();
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::openFilesChanged, this, [this](const QStringList &) {
+        updateTabActionStates();
+    });
+    connect(m_workspaceWidget, &EditorWorkspaceWidget::editorAvailabilityChanged, this, [this](bool) {
         updateTabActionStates();
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::currentFilePathChanged, this, [this](const QString &filePath) {
@@ -222,7 +227,9 @@ void MainWindow::createCentralEditor()
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::currentCursorChanged, this, [this](int line, int column) {
         if (m_cursorStatusLabel != nullptr) {
-            if (line <= 0 || column <= 0) {
+            if (line < 0 || column < 0) {
+                m_cursorStatusLabel->setText(tr("Preview Unavailable"));
+            } else if (line <= 0 || column <= 0) {
                 m_cursorStatusLabel->setText(tr("Model View"));
             } else {
                 m_cursorStatusLabel->setText(tr("Ln %1, Col %2").arg(line).arg(column));
@@ -234,6 +241,12 @@ void MainWindow::createCentralEditor()
             return;
         }
         if (document.filePath.isEmpty()) {
+            if (m_workspaceWidget != nullptr
+                && m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::PreviewUnavailable) {
+                m_documentStatusLabel->setText(tr("Document: Preview Unavailable"));
+                updateModelActionStates();
+                return;
+            }
             if (m_modelPropertiesPanel != nullptr) {
                 m_modelPropertiesPanel->showPlaceholder(tr("Select a model to inspect its properties."));
             }
@@ -495,7 +508,7 @@ void MainWindow::createScriptActions()
             {
                 tr("Open File"),
                 startDir,
-                tr("Supported Files (*.py *.stp *.step *.brep);;Python Files (*.py);;Model Files (*.stp *.step *.brep);;All Files (*)"),
+                tr("Editable Text and Models (*.txt *.md *.json *.xml *.yaml *.yml *.toml *.ini *.cfg *.conf *.log *.csv *.py *.cpp *.c *.h *.hpp *.qml *.js *.ts *.html *.css *.stp *.step *.brep);;All Files (*)"),
                 QString(),
                 QFileDialog::ExistingFile,
                 QFileDialog::AcceptOpen,
@@ -582,7 +595,7 @@ void MainWindow::registerBuiltInCommands()
     runCommand.id = QStringLiteral("builtin.run_script");
     runCommand.ownerId = QStringLiteral("builtin");
     runCommand.title = tr("Run Script");
-    runCommand.description = tr("Run the current script.");
+    runCommand.description = tr("Run the current Python file.");
     runCommand.source = tr("Built-in");
     runCommand.keywords = QStringList{QStringLiteral("script"), QStringLiteral("run")};
     runCommand.handler = [this] { runCurrentScript(); };
@@ -591,8 +604,8 @@ void MainWindow::registerBuiltInCommands()
     CommandDescriptor saveCommand;
     saveCommand.id = QStringLiteral("builtin.save_script");
     saveCommand.ownerId = QStringLiteral("builtin");
-    saveCommand.title = tr("Save Script");
-    saveCommand.description = tr("Save the current script.");
+    saveCommand.title = tr("Save File");
+    saveCommand.description = tr("Save the current file.");
     saveCommand.source = tr("Built-in");
     saveCommand.keywords = QStringList{QStringLiteral("script"), QStringLiteral("save")};
     saveCommand.handler = [this] { saveCurrentScriptIfNeeded(); };
@@ -601,8 +614,8 @@ void MainWindow::registerBuiltInCommands()
     CommandDescriptor saveAllCommand;
     saveAllCommand.id = QStringLiteral("builtin.save_all_scripts");
     saveAllCommand.ownerId = QStringLiteral("builtin");
-    saveAllCommand.title = tr("Save All Scripts");
-    saveAllCommand.description = tr("Save every opened script.");
+    saveAllCommand.title = tr("Save All Files");
+    saveAllCommand.description = tr("Save every opened editable file.");
     saveAllCommand.source = tr("Built-in");
     saveAllCommand.keywords = QStringList{QStringLiteral("script"), QStringLiteral("save"), QStringLiteral("all")};
     saveAllCommand.handler = [this] { saveAllScripts(); };
@@ -611,8 +624,8 @@ void MainWindow::registerBuiltInCommands()
     CommandDescriptor saveAsCommand;
     saveAsCommand.id = QStringLiteral("builtin.save_script_as");
     saveAsCommand.ownerId = QStringLiteral("builtin");
-    saveAsCommand.title = tr("Save Script As");
-    saveAsCommand.description = tr("Save the current script to a new path.");
+    saveAsCommand.title = tr("Save File As");
+    saveAsCommand.description = tr("Save the current file to a new path.");
     saveAsCommand.source = tr("Built-in");
     saveAsCommand.keywords = QStringList{QStringLiteral("script"), QStringLiteral("save"), QStringLiteral("as")};
     saveAsCommand.handler = [this] { saveCurrentScriptAs(); };
@@ -780,6 +793,10 @@ void MainWindow::registerBuiltInCommands()
 
 void MainWindow::runCurrentScript()
 {
+    if (m_workspaceWidget == nullptr || !m_workspaceWidget->currentFileRunnable()) {
+        return;
+    }
+
     if (!saveCurrentScriptIfNeeded()) {
         return;
     }
@@ -954,7 +971,7 @@ bool MainWindow::saveCurrentScriptAs()
 
     const QString currentPath = editor->currentFilePath();
     const QString startPath = currentPath.isEmpty() ? m_workspaceManager.fileBrowserRoot() : currentPath;
-    const QString filePath = saveScriptPath(startPath, tr("Save Python Script As"));
+    const QString filePath = saveScriptPath(startPath, tr("Save File As"));
     if (filePath.isEmpty()) {
         return false;
     }
@@ -999,7 +1016,7 @@ bool MainWindow::saveCurrentScriptIfNeeded()
 
     QString filePath = editor->currentFilePath();
     if (filePath.isEmpty()) {
-        filePath = saveScriptPath(m_workspaceManager.fileBrowserRoot(), tr("Save Python Script"));
+        filePath = saveScriptPath(m_workspaceManager.fileBrowserRoot(), tr("Save File"));
         if (filePath.isEmpty()) {
             return false;
         }
@@ -1109,16 +1126,16 @@ void MainWindow::retranslateUi()
         m_chineseAction->setText(tr("Simplified Chinese"));
     }
     if (m_newScriptAction != nullptr) {
-        m_newScriptAction->setText(tr("New Script"));
+        m_newScriptAction->setText(tr("New File"));
     }
     if (m_openScriptAction != nullptr) {
         m_openScriptAction->setText(tr("Open File"));
     }
     if (m_saveScriptAction != nullptr) {
-        m_saveScriptAction->setText(tr("Save Script"));
+        m_saveScriptAction->setText(tr("Save File"));
     }
     if (m_saveScriptAsAction != nullptr) {
-        m_saveScriptAsAction->setText(tr("Save Script As..."));
+        m_saveScriptAsAction->setText(tr("Save File As..."));
     }
     if (m_saveAllScriptsAction != nullptr) {
         m_saveAllScriptsAction->setText(tr("Save All"));
@@ -1213,6 +1230,8 @@ void MainWindow::retranslateUi()
     if (m_documentStatusLabel != nullptr && m_workspaceWidget != nullptr) {
         if (ModelDocumentWidget *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
             m_documentStatusLabel->setText(documentWidget->document().isValid ? tr("Document: Model Loaded") : tr("Document: Load Failed"));
+        } else if (m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::PreviewUnavailable) {
+            m_documentStatusLabel->setText(tr("Document: Preview Unavailable"));
         } else {
             ScriptEditorWidget *editor = m_workspaceWidget->currentEditor();
             m_documentStatusLabel->setText(editor != nullptr && editor->isModified() ? tr("Document: Modified") : tr("Document: Saved"));
@@ -1232,6 +1251,9 @@ void MainWindow::updateTabActionStates()
     const bool hasTabs = tabCount > 0;
     const bool hasMultipleTabs = tabCount > 1;
     const bool hasRightTabs = hasWorkspace && m_workspaceWidget->hasEditorsToRight();
+    const bool hasEditableEditor = hasWorkspace && m_workspaceWidget->hasAvailableEditor();
+    const bool canRunCurrent = hasWorkspace && m_workspaceWidget->currentFileRunnable() && !m_scriptExecutionManager.isRunning();
+    const bool canStopCurrent = m_scriptExecutionManager.isRunning();
 
     if (m_closeTabAction != nullptr) {
         m_closeTabAction->setEnabled(hasTabs);
@@ -1244,6 +1266,21 @@ void MainWindow::updateTabActionStates()
     }
     if (m_closeAllTabsAction != nullptr) {
         m_closeAllTabsAction->setEnabled(hasTabs);
+    }
+    if (m_saveScriptAction != nullptr) {
+        m_saveScriptAction->setEnabled(hasEditableEditor);
+    }
+    if (m_saveScriptAsAction != nullptr) {
+        m_saveScriptAsAction->setEnabled(hasEditableEditor);
+    }
+    if (m_saveAllScriptsAction != nullptr) {
+        m_saveAllScriptsAction->setEnabled(hasWorkspace);
+    }
+    if (m_runScriptAction != nullptr) {
+        m_runScriptAction->setEnabled(canRunCurrent);
+    }
+    if (m_stopScriptAction != nullptr) {
+        m_stopScriptAction->setEnabled(canStopCurrent);
     }
 }
 
@@ -1484,10 +1521,15 @@ QString MainWindow::saveScriptPath(const QString &initialPath, const QString &ti
     const QFileInfo fileInfo(initialPath);
     const QString startPath = fileInfo.exists() && fileInfo.isFile() ? fileInfo.absoluteFilePath()
                                                                      : (fileInfo.exists() ? fileInfo.absoluteFilePath() : initialPath);
-    const QString suffix = fileInfo.isFile() && !fileInfo.suffix().isEmpty() ? fileInfo.suffix().toLower() : QStringLiteral("py");
-    const QString filter = suffix == QStringLiteral("py")
-        ? tr("Python Files (*.py);;All Files (*)")
-        : tr("%1 Files (*.%2);;All Files (*)").arg(suffix.toUpper(), suffix);
+    const QString suffix = fileInfo.isFile() && !fileInfo.suffix().isEmpty() ? fileInfo.suffix().toLower() : QStringLiteral("txt");
+    const bool untitledEditor = m_workspaceWidget != nullptr
+        && m_workspaceWidget->currentEditor() != nullptr
+        && m_workspaceWidget->currentEditor()->currentFilePath().isEmpty();
+    const QString filter = untitledEditor
+        ? tr("Text Files (*.txt *.md *.json *.xml *.yaml *.yml *.toml *.ini *.cfg *.conf *.log *.csv *.py *.cpp *.c *.h *.hpp *.qml *.js *.ts *.html *.css);;All Files (*)")
+        : (suffix == QStringLiteral("py")
+            ? tr("Python Files (*.py);;All Files (*)")
+            : tr("%1 Files (*.%2);;All Files (*)").arg(suffix.toUpper(), suffix));
     return getThemedSaveFileName(
         {
             title,

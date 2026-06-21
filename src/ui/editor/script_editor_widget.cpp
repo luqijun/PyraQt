@@ -6,6 +6,7 @@
 #include <QColor>
 #include <QEvent>
 #include <QFile>
+#include <QFileInfo>
 #include <QKeyEvent>
 #include <QLabel>
 #include <QPalette>
@@ -31,7 +32,6 @@ ScriptEditorWidget::ScriptEditorWidget(core::PythonRuntimeManager *runtimeManage
 #if PYRAQT_HAS_QSCINTILLA
     m_editor = new QsciScintilla(this);
     m_lexer = new QsciLexerPython(this);
-    m_editor->setLexer(m_lexer);
     m_editor->setUtf8(true);
     m_editor->setIndentationWidth(4);
     m_editor->setAutoIndent(true);
@@ -42,7 +42,7 @@ ScriptEditorWidget::ScriptEditorWidget(core::PythonRuntimeManager *runtimeManage
     m_editor->setCaretLineBackgroundColor(QColor(QStringLiteral("#bccbee")));
     m_editor->installEventFilter(this);
     configureCodeCompletion();
-    m_editor->setText(QStringLiteral("# PyraQt script\nimport pyra\n\npyra.log.info('Ready to script')\n"));
+    m_editor->setText(QString());
     connect(m_editor, &QsciScintilla::textChanged, this, [this] {
         setModified(true);
     });
@@ -68,12 +68,13 @@ ScriptEditorWidget::ScriptEditorWidget(core::PythonRuntimeManager *runtimeManage
     });
     layout->addWidget(m_editor);
 #else
-    m_placeholder = new QLabel(tr("Phase 2 editor unavailable on this build."), this);
+    m_placeholder = new QLabel(tr("Text editor unavailable on this build."), this);
     m_placeholder->setAlignment(Qt::AlignCenter);
     m_placeholder->setWordWrap(true);
     layout->addWidget(m_placeholder);
 #endif
 
+    setDocumentMode(DocumentMode::PlainText);
     applyTheme(m_appliedTheme);
 }
 
@@ -152,6 +153,16 @@ QString ScriptEditorWidget::appliedTheme() const
     return m_appliedTheme;
 }
 
+ScriptEditorWidget::DocumentMode ScriptEditorWidget::documentMode() const
+{
+    return m_documentMode;
+}
+
+bool ScriptEditorWidget::isPythonDocument() const
+{
+    return m_documentMode == DocumentMode::Python;
+}
+
 bool ScriptEditorWidget::codeCompletionEnabled() const
 {
     return m_codeCompletionEnabled;
@@ -216,9 +227,10 @@ void ScriptEditorWidget::refreshMemberCompletionForTesting()
 void ScriptEditorWidget::newDocument()
 {
 #if PYRAQT_HAS_QSCINTILLA
-    m_editor->setText(QStringLiteral("# New PyraQt script\nimport pyra\n"));
+    m_editor->setText(QString());
 #endif
     m_currentFilePath.clear();
+    setDocumentMode(DocumentMode::PlainText);
     emit filePathChanged(m_currentFilePath);
     setModified(false);
     emit cursorPositionChanged(currentLine(), currentColumn());
@@ -235,6 +247,7 @@ bool ScriptEditorWidget::loadFromFile(const QString &filePath)
     m_editor->setText(QString::fromUtf8(file.readAll()));
 #endif
     m_currentFilePath = filePath;
+    updateDocumentModeFromPath(filePath);
     emit filePathChanged(m_currentFilePath);
     setModified(false);
     emit cursorPositionChanged(currentLine(), currentColumn());
@@ -258,6 +271,7 @@ bool ScriptEditorWidget::saveAs(const QString &filePath)
 
     file.write(currentText().toUtf8());
     m_currentFilePath = filePath;
+    updateDocumentModeFromPath(filePath);
     emit filePathChanged(m_currentFilePath);
     setModified(false);
     emit cursorPositionChanged(currentLine(), currentColumn());
@@ -270,6 +284,7 @@ void ScriptEditorWidget::setCurrentFilePath(const QString &filePath)
         return;
     }
     m_currentFilePath = filePath;
+    updateDocumentModeFromPath(filePath);
     emit filePathChanged(m_currentFilePath);
 }
 
@@ -327,6 +342,36 @@ void ScriptEditorWidget::applyTheme(const QString &themeName)
 #endif
 }
 
+void ScriptEditorWidget::setDocumentMode(const DocumentMode mode)
+{
+    m_documentMode = mode;
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor == nullptr) {
+        return;
+    }
+    if (mode == DocumentMode::Python) {
+        m_editor->setLexer(m_lexer);
+        m_codeCompletionEnabled = m_apis != nullptr;
+        m_dotCompletionEnabled = m_apis != nullptr;
+    } else {
+        if (m_editor->isListActive()) {
+            m_editor->cancelList();
+        }
+        m_editor->setLexer(nullptr);
+        m_codeCompletionEnabled = false;
+        m_dotCompletionEnabled = false;
+    }
+#else
+    Q_UNUSED(mode)
+#endif
+}
+
+void ScriptEditorWidget::updateDocumentModeFromPath(const QString &filePath)
+{
+    const QString suffix = QFileInfo(filePath).suffix().trimmed().toLower();
+    setDocumentMode(suffix == QStringLiteral("py") ? DocumentMode::Python : DocumentMode::PlainText);
+}
+
 void ScriptEditorWidget::configureCodeCompletion()
 {
     pyraqt::core::PythonCompletionProvider provider;
@@ -347,8 +392,8 @@ void ScriptEditorWidget::configureCodeCompletion()
     m_editor->setAutoCompletionCaseSensitivity(false);
     m_editor->setAutoCompletionReplaceWord(false);
     m_editor->setCallTipsStyle(QsciScintilla::CallTipsContext);
-    m_codeCompletionEnabled = true;
-    m_dotCompletionEnabled = true;
+    m_codeCompletionEnabled = false;
+    m_dotCompletionEnabled = false;
 #else
     m_codeCompletionEnabled = false;
     m_dotCompletionEnabled = false;
@@ -359,7 +404,7 @@ QStringList ScriptEditorWidget::editorMemberCompletions() const
 {
     QStringList words;
 #if PYRAQT_HAS_QSCINTILLA
-    if (m_editor != nullptr) {
+    if (m_editor != nullptr && isPythonDocument()) {
         int line = 0;
         int column = 0;
         m_editor->getCursorPosition(&line, &column);
@@ -468,6 +513,9 @@ bool ScriptEditorWidget::eventFilter(QObject *watched, QEvent *event)
 {
 #if PYRAQT_HAS_QSCINTILLA
     if (watched == m_editor && event->type() == QEvent::KeyPress) {
+        if (!isPythonDocument()) {
+            return QWidget::eventFilter(watched, event);
+        }
         auto *keyEvent = static_cast<QKeyEvent *>(event);
         if (keyEvent->key() == Qt::Key_Tab && m_editor->isListActive()) {
             m_editor->SendScintilla(QsciScintillaBase::SCI_TAB);

@@ -17,6 +17,8 @@ add_executable(pyraqt_core_tests
     ../src/ui/common/python_completion_text_edit.h
     ../src/ui/editor/editor_workspace_widget.cpp
     ../src/ui/editor/editor_workspace_widget.h
+    ../src/ui/editor/editor_placeholder_widget.cpp
+    ../src/ui/editor/editor_placeholder_widget.h
     ../src/ui/editor/model_document_widget.cpp
     ../src/ui/editor/model_document_widget.h
     ../src/ui/editor/model_summary_widget.cpp

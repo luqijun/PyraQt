@@ -10,13 +10,16 @@
 #include "ui/common/file_dialog_utils.h"
 #include "ui/common/python_completion_line_edit.h"
 #include "ui/common/python_completion_text_edit.h"
+#include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
 #include "ui/panels/python/python_console_widget.h"
 
 #include <QApplication>
+#include <QFile>
 #include <QLineEdit>
 #include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QTest>
 #include <memory>
 
@@ -33,6 +36,9 @@ private slots:
     void workspaceClosesEditorsToRight();
     void workspaceCloseAllEditorsKeepsUntitledTab();
     void workspaceStopsBatchCloseWhenConfirmationRejected();
+    void newDocumentDefaultsToPlainText();
+    void workspaceOpensPlainTextAndBinaryFiles();
+    void editorModeFollowsFilePathSuffix();
     void pythonCompletionProviderIncludesPyraApi();
     void pythonCompletionProviderParsesDottedPrefixes();
     void editorConfiguresCodeCompletion();
@@ -281,6 +287,97 @@ void UiThemeTest::workspaceStopsBatchCloseWhenConfirmationRejected()
 #endif
 }
 
+void UiThemeTest::newDocumentDefaultsToPlainText()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::ui::ScriptEditorWidget editor(&runtimeManager);
+
+    editor.newDocument();
+
+    QCOMPARE(editor.documentMode(), pyraqt::ui::ScriptEditorWidget::DocumentMode::PlainText);
+    QVERIFY(!editor.isPythonDocument());
+    QCOMPARE(editor.currentText(), QString());
+#if PYRAQT_HAS_QSCINTILLA
+    QVERIFY(!editor.codeCompletionEnabled());
+    QVERIFY(!editor.dotCompletionEnabled());
+#endif
+}
+
+void UiThemeTest::workspaceOpensPlainTextAndBinaryFiles()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString readmePath = dir.filePath(QStringLiteral("README"));
+    QFile readmeFile(readmePath);
+    QVERIFY(readmeFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    readmeFile.write("plain text content\n");
+    readmeFile.close();
+
+    const QString binaryPath = dir.filePath(QStringLiteral("archive.bin"));
+    QFile binaryFile(binaryPath);
+    QVERIFY(binaryFile.open(QIODevice::WriteOnly));
+    binaryFile.write(QByteArray("abc\0def", 7));
+    binaryFile.close();
+
+    QVERIFY(workspace.openPath(readmePath));
+    QCOMPARE(workspace.currentDocumentKind(), pyraqt::ui::EditorWorkspaceWidget::DocumentKind::Text);
+    QVERIFY(workspace.currentEditor() != nullptr);
+    QCOMPARE(workspace.currentEditor()->documentMode(), pyraqt::ui::ScriptEditorWidget::DocumentMode::PlainText);
+    QVERIFY(!workspace.currentFileRunnable());
+
+    QVERIFY(workspace.openPath(binaryPath));
+    QCOMPARE(workspace.currentDocumentKind(), pyraqt::ui::EditorWorkspaceWidget::DocumentKind::PreviewUnavailable);
+    QCOMPARE(workspace.currentFilePath(), binaryPath);
+    QVERIFY(workspace.currentEditor() == nullptr);
+    QVERIFY(!workspace.hasAvailableEditor());
+    QVERIFY(!workspace.currentFileRunnable());
+    QVERIFY(workspace.hasOpenPath(binaryPath));
+
+    auto *placeholder = workspace.findChild<pyraqt::ui::EditorPlaceholderWidget *>();
+    QVERIFY(placeholder != nullptr);
+    QCOMPARE(placeholder->filePath(), binaryPath);
+}
+
+void UiThemeTest::editorModeFollowsFilePathSuffix()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::ui::ScriptEditorWidget editor(&runtimeManager);
+
+    editor.newDocument();
+    QCOMPARE(editor.documentMode(), pyraqt::ui::ScriptEditorWidget::DocumentMode::PlainText);
+
+    const QString pythonPath = dir.filePath(QStringLiteral("example.py"));
+    QVERIFY(editor.saveAs(pythonPath));
+    QCOMPARE(editor.documentMode(), pyraqt::ui::ScriptEditorWidget::DocumentMode::Python);
+    QVERIFY(editor.isPythonDocument());
+#if PYRAQT_HAS_QSCINTILLA
+    QVERIFY(editor.codeCompletionEnabled());
+    QVERIFY(editor.dotCompletionEnabled());
+#endif
+
+    const QString textPath = dir.filePath(QStringLiteral("example.txt"));
+    QVERIFY(editor.saveAs(textPath));
+    QCOMPARE(editor.documentMode(), pyraqt::ui::ScriptEditorWidget::DocumentMode::PlainText);
+    QVERIFY(!editor.isPythonDocument());
+#if PYRAQT_HAS_QSCINTILLA
+    QVERIFY(!editor.codeCompletionEnabled());
+    QVERIFY(!editor.dotCompletionEnabled());
+#endif
+}
+
 void UiThemeTest::pythonCompletionProviderIncludesPyraApi()
 {
     pyraqt::core::PythonCompletionProvider provider;
@@ -318,6 +415,7 @@ void UiThemeTest::editorConfiguresCodeCompletion()
     pyraqt::core::ConfigManager configManager;
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
     pyraqt::ui::ScriptEditorWidget editor(&runtimeManager);
+    editor.setCurrentFilePath(QStringLiteral("sample.py"));
 #if PYRAQT_HAS_QSCINTILLA
     QVERIFY(editor.codeCompletionEnabled());
     QVERIFY(editor.dotCompletionEnabled());

@@ -4,15 +4,95 @@
 #include "core/modeling/model_types.h"
 #include "core/scripting/python_runtime_manager.h"
 #include "core/theme/theme_manager.h"
+#include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/model_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
 
 #include <QAction>
+#include <QFile>
 #include <QFileInfo>
 #include <QMenu>
+#include <QMimeDatabase>
+#include <QMimeType>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTextCodec>
 #include <QVBoxLayout>
+
+namespace {
+
+constexpr qint64 kTextProbeBytes = 8192;
+
+bool mimeSuggestsEditableText(const QMimeType &mimeType)
+{
+    if (!mimeType.isValid()) {
+        return false;
+    }
+    if (mimeType.inherits(QStringLiteral("text/plain"))) {
+        return true;
+    }
+    const QString name = mimeType.name();
+    if (name.startsWith(QStringLiteral("text/"))) {
+        return true;
+    }
+    static const QStringList readableMimeNames = {
+        QStringLiteral("application/json"),
+        QStringLiteral("application/ld+json"),
+        QStringLiteral("application/javascript"),
+        QStringLiteral("application/x-javascript"),
+        QStringLiteral("application/xml"),
+        QStringLiteral("application/x-yaml"),
+        QStringLiteral("application/toml"),
+        QStringLiteral("application/x-sh"),
+        QStringLiteral("application/x-python-code"),
+        QStringLiteral("application/x-zerosize"),
+    };
+    for (const QString &candidate : readableMimeNames) {
+        if (mimeType.inherits(candidate) || name == candidate) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool contentLooksEditableText(const QByteArray &bytes)
+{
+    if (bytes.contains('\0')) {
+        return false;
+    }
+    if (bytes.isEmpty()) {
+        return true;
+    }
+
+    QTextCodec::ConverterState utf8State;
+    QTextCodec *utf8 = QTextCodec::codecForName("UTF-8");
+    if (utf8 != nullptr) {
+        utf8->toUnicode(bytes.constData(), bytes.size(), &utf8State);
+        if (utf8State.invalidChars == 0) {
+            return true;
+        }
+    }
+
+    QTextCodec *localeCodec = QTextCodec::codecForLocale();
+    if (localeCodec != nullptr) {
+        QTextCodec::ConverterState localeState;
+        localeCodec->toUnicode(bytes.constData(), bytes.size(), &localeState);
+        if (localeState.invalidChars > bytes.size() / 20) {
+            return false;
+        }
+    }
+
+    int controlCount = 0;
+    for (const char value : bytes) {
+        const uchar ch = static_cast<uchar>(value);
+        if (ch < 0x20 && ch != '\n' && ch != '\r' && ch != '\t' && ch != '\f') {
+            ++controlCount;
+        }
+    }
+    return controlCount * 20 <= bytes.size();
+}
+
+} // namespace
 
 namespace pyraqt::ui {
 
@@ -34,7 +114,7 @@ EditorWorkspaceWidget::EditorWorkspaceWidget(
     m_tabWidget->setDocumentMode(true);
     m_tabWidget->setMovable(true);
     m_tabWidget->setAccessibleName(tr("Document Workspace"));
-    m_tabWidget->setAccessibleDescription(tr("Tabbed workspace for scripts and imported models"));
+    m_tabWidget->setAccessibleDescription(tr("Tabbed workspace for text files, imported models, and preview placeholders"));
     m_tabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(m_tabWidget);
 
@@ -80,6 +160,15 @@ bool EditorWorkspaceWidget::openPath(const QString &filePath)
         }
         ModelDocumentWidget *documentWidget = createModelDocumentWidget(document);
         const int index = m_tabWidget->addTab(documentWidget, QFileInfo(filePath).fileName());
+        m_tabWidget->setCurrentIndex(index);
+        updateTabTitle(index);
+        emit openFilesChanged(openFilePaths());
+        return true;
+    }
+
+    if (!isEditableTextFile(filePath)) {
+        EditorPlaceholderWidget *placeholder = createPreviewUnavailableWidget(filePath);
+        const int index = m_tabWidget->addTab(placeholder, QFileInfo(filePath).fileName());
         m_tabWidget->setCurrentIndex(index);
         updateTabTitle(index);
         emit openFilesChanged(openFilePaths());
@@ -151,11 +240,8 @@ bool EditorWorkspaceWidget::renameOpenPath(const QString &oldPath, const QString
         editor->setCurrentFilePath(newPath);
     } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
         documentWidget->setDocumentFilePath(newPath);
-        updateTabTitle(index);
-        if (widget == m_tabWidget->currentWidget()) {
-            emitCurrentWidgetState();
-        }
-        emit openFilesChanged(openFilePaths());
+    } else if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
+        placeholder->setFilePath(newPath);
     } else {
         return false;
     }
@@ -237,14 +323,18 @@ pyraqt::core::ModelSelectionInfo EditorWorkspaceWidget::currentModelSelection() 
 
 QString EditorWorkspaceWidget::currentFilePath() const
 {
-    QWidget *widget = m_tabWidget->currentWidget();
-    if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
-        return editor->currentFilePath();
-    }
-    if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
-        return documentWidget->document().filePath;
-    }
-    return {};
+    return filePathForWidget(m_tabWidget->currentWidget());
+}
+
+EditorWorkspaceWidget::DocumentKind EditorWorkspaceWidget::currentDocumentKind() const
+{
+    return documentKindForWidget(m_tabWidget->currentWidget());
+}
+
+bool EditorWorkspaceWidget::currentFileRunnable() const
+{
+    ScriptEditorWidget *editor = currentEditor();
+    return editor != nullptr && editor->isAvailable() && editor->isPythonDocument();
 }
 
 bool EditorWorkspaceWidget::hasOpenEditors() const
@@ -273,14 +363,7 @@ QStringList EditorWorkspaceWidget::openFilePaths() const
 {
     QStringList files;
     for (int index = 0; index < m_tabWidget->count(); ++index) {
-        QWidget *widget = m_tabWidget->widget(index);
-        QString filePath;
-        if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
-            filePath = editor->currentFilePath();
-        } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
-            filePath = documentWidget->document().filePath;
-        }
-
+        const QString filePath = filePathForWidget(m_tabWidget->widget(index));
         if (!filePath.isEmpty()) {
             files.push_back(filePath);
         }
@@ -333,6 +416,15 @@ ModelDocumentWidget *EditorWorkspaceWidget::createModelDocumentWidget(const pyra
     return widget;
 }
 
+EditorPlaceholderWidget *EditorWorkspaceWidget::createPreviewUnavailableWidget(const QString &filePath)
+{
+    return new EditorPlaceholderWidget(
+        tr("Cannot display this file in the editor"),
+        filePath,
+        tr("This file may be binary, or direct editing is not supported in the current version."),
+        this);
+}
+
 void EditorWorkspaceWidget::updateTabTitle(int index)
 {
     QWidget *widget = m_tabWidget->widget(index);
@@ -361,6 +453,12 @@ void EditorWorkspaceWidget::updateTabTitle(int index)
         if (title.isEmpty()) {
             title = tr("Model");
         }
+    } else if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
+        toolTip = placeholder->filePath();
+        title = QFileInfo(toolTip).fileName();
+        if (title.isEmpty()) {
+            title = placeholder->title();
+        }
     }
 
     m_tabWidget->setTabText(index, title);
@@ -381,6 +479,51 @@ void EditorWorkspaceWidget::connectModelDocumentWidget(ModelDocumentWidget *widg
     connect(widget, &ModelDocumentWidget::statusMessageChanged, this, [this](const QString &) {
         emitCurrentWidgetState();
     });
+}
+
+QString EditorWorkspaceWidget::filePathForWidget(QWidget *widget) const
+{
+    if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
+        return editor->currentFilePath();
+    }
+    if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+        return documentWidget->document().filePath;
+    }
+    if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
+        return placeholder->filePath();
+    }
+    return {};
+}
+
+EditorWorkspaceWidget::DocumentKind EditorWorkspaceWidget::documentKindForWidget(QWidget *widget) const
+{
+    if (qobject_cast<ScriptEditorWidget *>(widget) != nullptr) {
+        return DocumentKind::Text;
+    }
+    if (qobject_cast<ModelDocumentWidget *>(widget) != nullptr) {
+        return DocumentKind::Model;
+    }
+    if (qobject_cast<EditorPlaceholderWidget *>(widget) != nullptr) {
+        return DocumentKind::PreviewUnavailable;
+    }
+    return DocumentKind::None;
+}
+
+bool EditorWorkspaceWidget::isEditableTextFile(const QString &filePath) const
+{
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    QMimeDatabase mimeDatabase;
+    const QMimeType mimeType = mimeDatabase.mimeTypeForFile(filePath, QMimeDatabase::MatchContent);
+    if (mimeSuggestsEditableText(mimeType)) {
+        return true;
+    }
+
+    const QByteArray bytes = file.read(kTextProbeBytes);
+    return contentLooksEditableText(bytes);
 }
 
 void EditorWorkspaceWidget::connectEditor(ScriptEditorWidget *editor)
@@ -431,6 +574,16 @@ void EditorWorkspaceWidget::emitCurrentWidgetState()
         emit currentCursorChanged(0, 0);
         emit modelDocumentChanged(documentWidget->document());
         emit modelSelectionChanged(documentWidget->selectionInfo());
+        return;
+    }
+
+    if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
+        emit currentFilePathChanged(placeholder->filePath());
+        emit documentModificationChanged(false);
+        emit editorAvailabilityChanged(false);
+        emit currentCursorChanged(-1, -1);
+        emit modelDocumentChanged({});
+        emit modelSelectionChanged({});
         return;
     }
 
@@ -496,8 +649,8 @@ int EditorWorkspaceWidget::findWidgetByPath(const QString &filePath) const
     }
 
     for (int index = 0; index < m_tabWidget->count(); ++index) {
-        auto *documentWidget = qobject_cast<ModelDocumentWidget *>(m_tabWidget->widget(index));
-        if (documentWidget != nullptr && documentWidget->document().filePath == filePath) {
+        QWidget *widget = m_tabWidget->widget(index);
+        if (filePathForWidget(widget) == filePath) {
             return index;
         }
     }
@@ -541,8 +694,8 @@ bool EditorWorkspaceWidget::closeEditorInternal(int index)
     if (editor != nullptr && editor->isModified()) {
         bool accepted = false;
         emit requestCloseConfirmation(
-            tr("Close Script"),
-            tr("The current script has unsaved changes. Close it anyway?"),
+            tr("Close File"),
+            tr("The current file has unsaved changes. Close it anyway?"),
             &accepted);
         if (!accepted) {
             return false;
