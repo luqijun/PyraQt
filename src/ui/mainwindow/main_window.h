@@ -8,6 +8,7 @@ class QLabel;
 class QMenu;
 class QPlainTextEdit;
 class QDockWidget;
+class QToolBar;
 
 namespace pyraqt::core {
 class CommandManager;
@@ -93,6 +94,9 @@ private:
     void appendConsoleLine(const QString &prefix, const QString &message);
     void restoreSession();
     void retranslateUi();
+    void applyActionIcons();
+    void configureActionPresentation();
+    void configureToolbar();
     void updateFileBrowserRootAfterPathChange(const QString &oldPath, const QString &newPath = QString());
     bool confirmDeletePath(const QString &path);
     bool confirmDeleteOpenEditors(const QString &path);
@@ -123,6 +127,7 @@ private:
     QLabel *m_documentStatusLabel = nullptr;
     QLabel *m_fileStatusLabel = nullptr;
     QLabel *m_cursorStatusLabel = nullptr;
+    QToolBar *m_mainToolBar = nullptr;
     QMenu *m_recentFilesMenu = nullptr;
     QAction *m_commandPaletteAction = nullptr;
     QAction *m_lightThemeAction = nullptr;

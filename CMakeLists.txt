@@ -119,6 +119,7 @@ target_link_libraries(pyraqt_core
         PyraQt::QtCore
         PyraQt::QtGui
         PyraQt::QtWidgets
+        PyraQt::QtSvg
         PyraQt::QtOpenGLWidgets
         Python3::Python
     PRIVATE
@@ -142,6 +143,8 @@ add_executable(pyraqt
     src/app/main.cpp
     src/ui/common/file_dialog_utils.cpp
     src/ui/common/file_dialog_utils.h
+    src/ui/common/icon_utils.cpp
+    src/ui/common/icon_utils.h
     src/ui/common/python_completion_line_edit.cpp
     src/ui/common/python_completion_line_edit.h
     src/ui/common/python_completion_text_edit.cpp
@@ -184,6 +187,7 @@ target_link_libraries(pyraqt
         PyraQt::QtCore
         PyraQt::QtGui
         PyraQt::QtWidgets
+        PyraQt::QtSvg
         PyraQt::QtOpenGLWidgets
 )
 

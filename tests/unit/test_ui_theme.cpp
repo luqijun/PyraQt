@@ -1,23 +1,33 @@
 #include "core/theme/theme_manager.h"
+#include "core/i18n/i18n_manager.h"
 #include "core/modeling/model_import_manager.h"
 #include "core/config/config_manager.h"
+#include "core/command/command_manager.h"
 #include "core/logging/log_manager.h"
+#include "core/plugin/plugin_manager.h"
+#include "core/runtime/crash_recovery_manager.h"
 #include "core/scripting/pyra_api_bridge.h"
 #include "core/scripting/python_completion_provider.h"
+#include "core/scripting/python_feature_manager.h"
 #include "core/scripting/python_runner.h"
 #include "core/scripting/python_runtime_manager.h"
 #include "core/scripting/script_execution_manager.h"
+#include "core/update/update_manager.h"
+#include "core/workspace/workspace_manager.h"
 #include "ui/common/file_dialog_utils.h"
 #include "ui/common/python_completion_line_edit.h"
 #include "ui/common/python_completion_text_edit.h"
 #include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
+#include "ui/mainwindow/main_window.h"
 #include "ui/panels/python/python_console_widget.h"
 
 #include <QApplication>
 #include <QFile>
 #include <QLineEdit>
+#include <QToolBar>
+#include <QToolButton>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
@@ -45,6 +55,7 @@ private slots:
     void consoleLineEditTriggersDottedCompletion();
     void consoleEditorTriggersDottedCompletion();
     void consoleConfiguresCodeCompletionAndRuntimeGlobals();
+    void mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange();
     void themedFileDialogUsesQtDialogSettings();
     void themedFileDialogUsesRequestedDefaultSuffix();
 };
@@ -550,6 +561,78 @@ void UiThemeTest::consoleConfiguresCodeCompletionAndRuntimeGlobals()
     QVERIFY(!console.outputTextForTesting().contains(QStringLiteral("[result] None")));
 
     QVERIFY(console.completionWords().contains(QStringLiteral("custom_symbol")));
+    QVERIFY(console.actionButtonsHaveIcons());
+    QVERIFY(!console.actionButtonsShowText());
+}
+
+void UiThemeTest::mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::I18nManager i18nManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    pyraqt::core::UpdateManager updateManager(configManager, logManager);
+    pyraqt::core::CrashRecoveryManager crashRecoveryManager(configManager, logManager);
+
+    pyraqt::ui::MainWindow window(configManager,
+        logManager,
+        modelImportManager,
+        themeManager,
+        i18nManager,
+        runtimeManager,
+        executionManager,
+        commandManager,
+        pluginManager,
+        workspaceManager,
+        updateManager,
+        crashRecoveryManager);
+
+    auto *toolBar = window.findChild<QToolBar *>(QStringLiteral("mainToolBar"));
+    QVERIFY(toolBar != nullptr);
+    QCOMPARE(toolBar->toolButtonStyle(), Qt::ToolButtonIconOnly);
+
+    QAction *runAction = nullptr;
+    for (QAction *action : toolBar->actions()) {
+        if (action != nullptr && action->text() == QStringLiteral("Run Script")) {
+            runAction = action;
+            break;
+        }
+    }
+    QVERIFY(runAction != nullptr);
+    QVERIFY(!runAction->icon().isNull());
+
+    auto *console = window.findChild<pyraqt::ui::PythonConsoleWidget *>();
+    QVERIFY(console != nullptr);
+    QVERIFY(console->actionButtonsHaveIcons());
+    QVERIFY(!console->actionButtonsShowText());
+
+    const QList<QToolButton *> toolButtons = toolBar->findChildren<QToolButton *>();
+    QVERIFY(!toolButtons.isEmpty());
+    for (QToolButton *button : toolButtons) {
+        QVERIFY(button != nullptr);
+        QCOMPARE(button->toolButtonStyle(), Qt::ToolButtonIconOnly);
+    }
+
+    QVERIFY(themeManager.setLightTheme());
+    QVERIFY(!runAction->icon().isNull());
+    QVERIFY(console->actionButtonsHaveIcons());
+
+    QVERIFY(themeManager.setDarkTheme());
+    QVERIFY(!runAction->icon().isNull());
+    QVERIFY(console->actionButtonsHaveIcons());
 }
 
 void UiThemeTest::themedFileDialogUsesQtDialogSettings()

@@ -2,5 +2,36 @@
   <qresource prefix="/">
     <file alias="themes/light.qss">themes/light.qss</file>
     <file alias="themes/dark.qss">themes/dark.qss</file>
+    <file alias="icons/new-file.svg">icons/new-file.svg</file>
+    <file alias="icons/open-file.svg">icons/open-file.svg</file>
+    <file alias="icons/save.svg">icons/save.svg</file>
+    <file alias="icons/save-all.svg">icons/save-all.svg</file>
+    <file alias="icons/run.svg">icons/run.svg</file>
+    <file alias="icons/stop.svg">icons/stop.svg</file>
+    <file alias="icons/close-tab.svg">icons/close-tab.svg</file>
+    <file alias="icons/reopen-session.svg">icons/reopen-session.svg</file>
+    <file alias="icons/settings.svg">icons/settings.svg</file>
+    <file alias="icons/python-tools.svg">icons/python-tools.svg</file>
+    <file alias="icons/file-browser-root.svg">icons/file-browser-root.svg</file>
+    <file alias="icons/command-palette.svg">icons/command-palette.svg</file>
+    <file alias="icons/update.svg">icons/update.svg</file>
+    <file alias="icons/fit-all.svg">icons/fit-all.svg</file>
+    <file alias="icons/view-front.svg">icons/view-front.svg</file>
+    <file alias="icons/view-back.svg">icons/view-back.svg</file>
+    <file alias="icons/view-left.svg">icons/view-left.svg</file>
+    <file alias="icons/view-right.svg">icons/view-right.svg</file>
+    <file alias="icons/view-top.svg">icons/view-top.svg</file>
+    <file alias="icons/view-bottom.svg">icons/view-bottom.svg</file>
+    <file alias="icons/view-iso.svg">icons/view-iso.svg</file>
+    <file alias="icons/wireframe.svg">icons/wireframe.svg</file>
+    <file alias="icons/shaded.svg">icons/shaded.svg</file>
+    <file alias="icons/shaded-edges.svg">icons/shaded-edges.svg</file>
+    <file alias="icons/select-shape.svg">icons/select-shape.svg</file>
+    <file alias="icons/select-face.svg">icons/select-face.svg</file>
+    <file alias="icons/select-edge.svg">icons/select-edge.svg</file>
+    <file alias="icons/select-vertex.svg">icons/select-vertex.svg</file>
+    <file alias="icons/clear-selection.svg">icons/clear-selection.svg</file>
+    <file alias="icons/inspect.svg">icons/inspect.svg</file>
+    <file alias="icons/clear-console.svg">icons/clear-console.svg</file>
   </qresource>
 </RCC>

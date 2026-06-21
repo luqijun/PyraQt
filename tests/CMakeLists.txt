@@ -11,10 +11,18 @@ add_executable(pyraqt_core_tests
     unit/test_workspace_services.cpp
     ../src/ui/common/file_dialog_utils.cpp
     ../src/ui/common/file_dialog_utils.h
+    ../src/ui/common/icon_utils.cpp
+    ../src/ui/common/icon_utils.h
     ../src/ui/common/python_completion_line_edit.cpp
     ../src/ui/common/python_completion_line_edit.h
     ../src/ui/common/python_completion_text_edit.cpp
     ../src/ui/common/python_completion_text_edit.h
+    ../src/ui/dialogs/command_palette_dialog.cpp
+    ../src/ui/dialogs/command_palette_dialog.h
+    ../src/ui/dialogs/settings_dialog.cpp
+    ../src/ui/dialogs/settings_dialog.h
+    ../src/ui/dialogs/python_tools_dialog.cpp
+    ../src/ui/dialogs/python_tools_dialog.h
     ../src/ui/editor/editor_workspace_widget.cpp
     ../src/ui/editor/editor_workspace_widget.h
     ../src/ui/editor/editor_placeholder_widget.cpp
@@ -31,6 +39,12 @@ add_executable(pyraqt_core_tests
     ../src/ui/panels/properties/model_properties_panel.h
     ../src/ui/panels/python/python_console_widget.cpp
     ../src/ui/panels/python/python_console_widget.h
+    ../src/ui/panels/files/file_browser_panel.cpp
+    ../src/ui/panels/files/file_browser_panel.h
+    ../src/ui/panels/plugins/plugin_manager_panel.cpp
+    ../src/ui/panels/plugins/plugin_manager_panel.h
+    ../src/ui/mainwindow/main_window.cpp
+    ../src/ui/mainwindow/main_window.h
     ../resources/pyraqt_resources.qrc
 )
 
@@ -40,6 +54,7 @@ target_link_libraries(pyraqt_core_tests
         PyraQt::QtCore
         PyraQt::QtGui
         PyraQt::QtWidgets
+        PyraQt::QtSvg
         PyraQt::QtTest
 )
 

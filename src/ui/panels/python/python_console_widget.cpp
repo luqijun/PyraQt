@@ -4,6 +4,8 @@
 #include "core/scripting/python_runtime_manager.h"
 #include "core/scripting/script_result.h"
 #include "core/scripting/script_execution_manager.h"
+#include "core/theme/theme_manager.h"
+#include "ui/common/icon_utils.h"
 #include "ui/common/python_completion_line_edit.h"
 #include "ui/common/python_completion_text_edit.h"
 
@@ -11,9 +13,10 @@
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
-#include <QPushButton>
 #include <QSplitter>
 #include <QTextEdit>
+#include <QToolBar>
+#include <QToolButton>
 #include <QVBoxLayout>
 
 namespace pyraqt::ui {
@@ -21,10 +24,12 @@ namespace pyraqt::ui {
 PythonConsoleWidget::PythonConsoleWidget(
     core::PythonRuntimeManager &runtimeManager,
     core::ScriptExecutionManager &executionManager,
+    core::ThemeManager *themeManager,
     QWidget *parent)
     : QWidget(parent)
     , m_runtimeManager(runtimeManager)
     , m_executionManager(executionManager)
+    , m_themeManager(themeManager)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -46,33 +51,47 @@ PythonConsoleWidget::PythonConsoleWidget(
 
     auto *inputLayout = new QHBoxLayout();
     m_input = new PythonCompletionLineEdit(this);
-    m_input->setPlaceholderText(tr(">>> Enter Python command"));
     m_input->installEventFilter(this);
     m_input->setMemberCompletionProvider([this](const QString &prefix) {
         return memberCompletionsForPrefix(prefix);
     });
-    auto *runButton = new QPushButton(tr("Run Command"), this);
-    auto *runEditorButton = new QPushButton(tr("Run Editor"), this);
-    auto *inspectButton = new QPushButton(tr("Inspect"), this);
-    auto *clearButton = new QPushButton(tr("Clear"), this);
     inputLayout->addWidget(m_input, 1);
-    inputLayout->addWidget(runButton);
-    inputLayout->addWidget(runEditorButton);
-    inputLayout->addWidget(inspectButton);
-    inputLayout->addWidget(clearButton);
+    m_actionToolBar = new QToolBar(this);
+    m_actionToolBar->setObjectName(QStringLiteral("pythonConsoleToolBar"));
+    m_actionToolBar->setIconSize(QSize(20, 20));
+    m_actionToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_actionToolBar->setMovable(false);
+    m_actionToolBar->setFloatable(false);
+    m_actionToolBar->setContextMenuPolicy(Qt::PreventContextMenu);
+    m_runCommandButton = new QToolButton(m_actionToolBar);
+    m_runEditorButton = new QToolButton(m_actionToolBar);
+    m_inspectButton = new QToolButton(m_actionToolBar);
+    m_clearButton = new QToolButton(m_actionToolBar);
+    for (QToolButton *button : {m_runCommandButton, m_runEditorButton, m_inspectButton, m_clearButton}) {
+        button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        m_actionToolBar->addWidget(button);
+    }
+    inputLayout->addWidget(m_actionToolBar);
     layout->addLayout(inputLayout);
 
     connect(m_input, &QLineEdit::returnPressed, this, &PythonConsoleWidget::runCommand);
-    connect(runButton, &QPushButton::clicked, this, &PythonConsoleWidget::runCommand);
-    connect(runEditorButton, &QPushButton::clicked, this, &PythonConsoleWidget::runEditor);
-    connect(inspectButton, &QPushButton::clicked, this, &PythonConsoleWidget::inspectObjects);
-    connect(clearButton, &QPushButton::clicked, this, &PythonConsoleWidget::clearConsole);
+    connect(m_runCommandButton, &QToolButton::clicked, this, &PythonConsoleWidget::runCommand);
+    connect(m_runEditorButton, &QToolButton::clicked, this, &PythonConsoleWidget::runEditor);
+    connect(m_inspectButton, &QToolButton::clicked, this, &PythonConsoleWidget::inspectObjects);
+    connect(m_clearButton, &QToolButton::clicked, this, &PythonConsoleWidget::clearConsole);
     connect(&m_runtimeManager, &core::PythonRuntimeManager::stdoutReceived, this, [this](const QString &output) {
         appendOutput(QStringLiteral("stdout"), output.trimmed());
     });
     connect(&m_runtimeManager, &core::PythonRuntimeManager::stderrReceived, this, [this](const QString &output) {
         appendOutput(QStringLiteral("stderr"), output.trimmed());
     });
+    if (m_themeManager != nullptr) {
+        connect(m_themeManager, &core::ThemeManager::themeChanged, this, [this] {
+            applyIcons();
+        });
+    }
+    retranslateUi();
+    applyIcons();
     m_runtimeManager.initializeEmbedded();
     refreshCompletions();
 }
@@ -129,6 +148,26 @@ void PythonConsoleWidget::submitCommandForTesting(const QString &command)
     runCommand();
 }
 
+bool PythonConsoleWidget::actionButtonsShowText() const
+{
+    for (const QToolButton *button : {m_runCommandButton, m_runEditorButton, m_inspectButton, m_clearButton}) {
+        if (button != nullptr && !button->text().isEmpty()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PythonConsoleWidget::actionButtonsHaveIcons() const
+{
+    for (const QToolButton *button : {m_runCommandButton, m_runEditorButton, m_inspectButton, m_clearButton}) {
+        if (button == nullptr || button->icon().isNull()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void PythonConsoleWidget::refreshCompletions()
 {
     if (!m_runtimeManager.codeCompletionEnabled()) {
@@ -151,6 +190,55 @@ void PythonConsoleWidget::refreshCompletions()
     if (m_editor != nullptr) {
         m_editor->setCompletionWords(m_completionWords);
         m_editor->setCompletionThreshold(m_runtimeManager.completionTriggerThreshold());
+    }
+}
+
+void PythonConsoleWidget::retranslateUi()
+{
+    if (m_output != nullptr) {
+        m_output->setPlainText(tr("Python Console ready. Use pyra or iface to access the embedded PyraQt API."));
+    }
+    if (m_editor != nullptr) {
+        m_editor->setPlaceholderText(tr("Optional multi-line Python editor. Click Run Editor to execute in the shared interpreter."));
+    }
+    if (m_input != nullptr) {
+        m_input->setPlaceholderText(tr(">>> Enter Python command"));
+        m_input->setAccessibleName(tr("Python Console Input"));
+        m_input->setAccessibleDescription(tr("Single-line Python command input"));
+    }
+
+    const auto configureButton = [](QToolButton *button, const QString &text, const QString &description) {
+        if (button == nullptr) {
+            return;
+        }
+        button->setText(QString());
+        button->setToolTip(text);
+        button->setStatusTip(text);
+        button->setWhatsThis(description);
+        button->setAccessibleName(text);
+        button->setAccessibleDescription(description);
+    };
+
+    configureButton(m_runCommandButton, tr("Run Command"), tr("Executes the current single-line Python command"));
+    configureButton(m_runEditorButton, tr("Run Editor"), tr("Executes the multi-line editor buffer in the shared interpreter"));
+    configureButton(m_inspectButton, tr("Inspect"), tr("Lists the currently available Python global objects"));
+    configureButton(m_clearButton, tr("Clear"), tr("Clears the console output"));
+}
+
+void PythonConsoleWidget::applyIcons()
+{
+    const QString themeName = m_themeManager == nullptr ? QStringLiteral("dark") : m_themeManager->currentTheme();
+    if (m_runCommandButton != nullptr) {
+        m_runCommandButton->setIcon(themedSvgIcon(QStringLiteral("run"), themeName, QSize(20, 20)));
+    }
+    if (m_runEditorButton != nullptr) {
+        m_runEditorButton->setIcon(themedSvgIcon(QStringLiteral("save-all"), themeName, QSize(20, 20)));
+    }
+    if (m_inspectButton != nullptr) {
+        m_inspectButton->setIcon(themedSvgIcon(QStringLiteral("inspect"), themeName, QSize(20, 20)));
+    }
+    if (m_clearButton != nullptr) {
+        m_clearButton->setIcon(themedSvgIcon(QStringLiteral("clear-console"), themeName, QSize(20, 20)));
     }
 }
 

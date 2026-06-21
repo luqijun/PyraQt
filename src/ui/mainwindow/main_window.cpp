@@ -20,6 +20,7 @@
 #include "ui/dialogs/python_tools_dialog.h"
 #include "ui/dialogs/settings_dialog.h"
 #include "ui/common/file_dialog_utils.h"
+#include "ui/common/icon_utils.h"
 #include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/model_document_widget.h"
@@ -105,6 +106,10 @@ MainWindow::MainWindow(
     connect(&m_i18nManager, &core::I18nManager::localeChanged, this, [this] {
         retranslateUi();
         refreshRecentFilesMenu();
+    });
+    connect(&m_themeManager, &core::ThemeManager::themeChanged, this, [this] {
+        applyActionIcons();
+        configureToolbar();
     });
     connect(&m_pythonRuntimeManager, &core::PythonRuntimeManager::interpreterChanged, this, [this](const QString &) {
         if (m_pythonStatusLabel != nullptr) {
@@ -321,7 +326,7 @@ void MainWindow::createDocks()
 
     auto *consoleDock = new QDockWidget(tr("Python Console"), this);
     consoleDock->setObjectName(QStringLiteral("consoleDock"));
-    m_console = new PythonConsoleWidget(m_pythonRuntimeManager, m_scriptExecutionManager, consoleDock);
+    m_console = new PythonConsoleWidget(m_pythonRuntimeManager, m_scriptExecutionManager, &m_themeManager, consoleDock);
     consoleDock->setWidget(m_console);
     addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
 
@@ -406,27 +411,28 @@ void MainWindow::createMenus()
     selectionMenu->addAction(m_selectVertexAction);
     selectionMenu->addAction(m_clearSelectionAction);
 
-    auto *mainToolbar = addToolBar(QString());
-    mainToolbar->setObjectName(QStringLiteral("mainToolBar"));
-    mainToolbar->addAction(m_newScriptAction);
-    mainToolbar->addAction(m_openScriptAction);
-    mainToolbar->addAction(m_saveScriptAction);
-    mainToolbar->addAction(m_saveScriptAsAction);
-    mainToolbar->addAction(m_saveAllScriptsAction);
-    mainToolbar->addAction(m_runScriptAction);
-    mainToolbar->addAction(m_stopScriptAction);
-    mainToolbar->addAction(m_commandPaletteAction);
-    mainToolbar->addAction(m_settingsAction);
-    mainToolbar->addAction(m_checkUpdatesAction);
-    mainToolbar->addAction(m_fitAllAction);
-    mainToolbar->addAction(m_wireframeAction);
-    mainToolbar->addAction(m_shadedAction);
-    mainToolbar->addAction(m_shadedEdgesAction);
-    mainToolbar->addAction(m_selectFaceAction);
-    mainToolbar->addAction(m_selectEdgeAction);
-    mainToolbar->addAction(m_clearSelectionAction);
-    mainToolbar->addAction(m_lightThemeAction);
-    mainToolbar->addAction(m_darkThemeAction);
+    m_mainToolBar = addToolBar(QString());
+    m_mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
+    m_mainToolBar->addAction(m_newScriptAction);
+    m_mainToolBar->addAction(m_openScriptAction);
+    m_mainToolBar->addAction(m_saveScriptAction);
+    m_mainToolBar->addAction(m_saveScriptAsAction);
+    m_mainToolBar->addAction(m_saveAllScriptsAction);
+    m_mainToolBar->addAction(m_runScriptAction);
+    m_mainToolBar->addAction(m_stopScriptAction);
+    m_mainToolBar->addAction(m_commandPaletteAction);
+    m_mainToolBar->addAction(m_settingsAction);
+    m_mainToolBar->addAction(m_checkUpdatesAction);
+    m_mainToolBar->addAction(m_fitAllAction);
+    m_mainToolBar->addAction(m_wireframeAction);
+    m_mainToolBar->addAction(m_shadedAction);
+    m_mainToolBar->addAction(m_shadedEdgesAction);
+    m_mainToolBar->addAction(m_selectFaceAction);
+    m_mainToolBar->addAction(m_selectEdgeAction);
+    m_mainToolBar->addAction(m_clearSelectionAction);
+    m_mainToolBar->addAction(m_lightThemeAction);
+    m_mainToolBar->addAction(m_darkThemeAction);
+    configureToolbar();
 }
 
 void MainWindow::createStatusBar()
@@ -563,6 +569,8 @@ void MainWindow::createScriptActions()
     connect(m_selectEdgeAction, &QAction::triggered, this, &MainWindow::setModelSelectionMode);
     connect(m_selectVertexAction, &QAction::triggered, this, &MainWindow::setModelSelectionMode);
     connect(m_clearSelectionAction, &QAction::triggered, this, &MainWindow::clearModelSelection);
+    configureActionPresentation();
+    applyActionIcons();
 }
 
 void MainWindow::refreshRecentFilesMenu()
@@ -1115,9 +1123,13 @@ void MainWindow::retranslateUi()
 
     if (m_lightThemeAction != nullptr) {
         m_lightThemeAction->setText(tr("Light"));
+        m_lightThemeAction->setToolTip(tr("Switch to light theme"));
+        m_lightThemeAction->setStatusTip(tr("Switch to light theme"));
     }
     if (m_darkThemeAction != nullptr) {
         m_darkThemeAction->setText(tr("Dark"));
+        m_darkThemeAction->setToolTip(tr("Switch to dark theme"));
+        m_darkThemeAction->setStatusTip(tr("Switch to dark theme"));
     }
     if (m_englishAction != nullptr) {
         m_englishAction->setText(tr("English"));
@@ -1127,103 +1139,170 @@ void MainWindow::retranslateUi()
     }
     if (m_newScriptAction != nullptr) {
         m_newScriptAction->setText(tr("New File"));
+        m_newScriptAction->setToolTip(tr("Create a new file"));
+        m_newScriptAction->setStatusTip(tr("Create a new file"));
     }
     if (m_openScriptAction != nullptr) {
         m_openScriptAction->setText(tr("Open File"));
+        m_openScriptAction->setToolTip(tr("Open a file"));
+        m_openScriptAction->setStatusTip(tr("Open a file"));
     }
     if (m_saveScriptAction != nullptr) {
         m_saveScriptAction->setText(tr("Save File"));
+        m_saveScriptAction->setToolTip(tr("Save the current file"));
+        m_saveScriptAction->setStatusTip(tr("Save the current file"));
     }
     if (m_saveScriptAsAction != nullptr) {
         m_saveScriptAsAction->setText(tr("Save File As..."));
+        m_saveScriptAsAction->setToolTip(tr("Save the current file to a new path"));
+        m_saveScriptAsAction->setStatusTip(tr("Save the current file to a new path"));
     }
     if (m_saveAllScriptsAction != nullptr) {
         m_saveAllScriptsAction->setText(tr("Save All"));
+        m_saveAllScriptsAction->setToolTip(tr("Save all opened editable files"));
+        m_saveAllScriptsAction->setStatusTip(tr("Save all opened editable files"));
     }
     if (m_runScriptAction != nullptr) {
         m_runScriptAction->setText(tr("Run Script"));
+        m_runScriptAction->setToolTip(tr("Run the current Python file"));
+        m_runScriptAction->setStatusTip(tr("Run the current Python file"));
     }
     if (m_stopScriptAction != nullptr) {
         m_stopScriptAction->setText(tr("Stop Script"));
+        m_stopScriptAction->setToolTip(tr("Stop the running script"));
+        m_stopScriptAction->setStatusTip(tr("Stop the running script"));
     }
     if (m_closeTabAction != nullptr) {
         m_closeTabAction->setText(tr("Close Tab"));
+        m_closeTabAction->setToolTip(tr("Close the current tab"));
+        m_closeTabAction->setStatusTip(tr("Close the current tab"));
     }
     if (m_closeOtherTabsAction != nullptr) {
         m_closeOtherTabsAction->setText(tr("Close Other Tabs"));
+        m_closeOtherTabsAction->setToolTip(tr("Close all tabs except the current one"));
+        m_closeOtherTabsAction->setStatusTip(tr("Close all tabs except the current one"));
     }
     if (m_closeRightTabsAction != nullptr) {
         m_closeRightTabsAction->setText(tr("Close Tabs to the Right"));
+        m_closeRightTabsAction->setToolTip(tr("Close all tabs to the right"));
+        m_closeRightTabsAction->setStatusTip(tr("Close all tabs to the right"));
     }
     if (m_closeAllTabsAction != nullptr) {
         m_closeAllTabsAction->setText(tr("Close All Tabs"));
+        m_closeAllTabsAction->setToolTip(tr("Close all open tabs"));
+        m_closeAllTabsAction->setStatusTip(tr("Close all open tabs"));
     }
     if (m_reopenSessionAction != nullptr) {
         m_reopenSessionAction->setText(tr("Reopen Last Session"));
+        m_reopenSessionAction->setToolTip(tr("Reopen the last session"));
+        m_reopenSessionAction->setStatusTip(tr("Reopen the last session"));
     }
     if (m_settingsAction != nullptr) {
         m_settingsAction->setText(tr("Settings"));
+        m_settingsAction->setToolTip(tr("Open application settings"));
+        m_settingsAction->setStatusTip(tr("Open application settings"));
     }
     if (m_pythonToolsAction != nullptr) {
         m_pythonToolsAction->setText(tr("Python Tools"));
+        m_pythonToolsAction->setToolTip(tr("Open Python tools"));
+        m_pythonToolsAction->setStatusTip(tr("Open Python tools"));
     }
     if (m_chooseFileBrowserRootAction != nullptr) {
         m_chooseFileBrowserRootAction->setText(tr("Set File Browser Root"));
+        m_chooseFileBrowserRootAction->setToolTip(tr("Choose the file browser root folder"));
+        m_chooseFileBrowserRootAction->setStatusTip(tr("Choose the file browser root folder"));
     }
     if (m_commandPaletteAction != nullptr) {
         m_commandPaletteAction->setText(tr("Command Palette"));
+        m_commandPaletteAction->setToolTip(tr("Open the command palette"));
+        m_commandPaletteAction->setStatusTip(tr("Open the command palette"));
     }
     if (m_checkUpdatesAction != nullptr) {
         m_checkUpdatesAction->setText(tr("Check for Updates"));
+        m_checkUpdatesAction->setToolTip(tr("Check for available updates"));
+        m_checkUpdatesAction->setStatusTip(tr("Check for available updates"));
     }
     if (m_fitAllAction != nullptr) {
         m_fitAllAction->setText(tr("Fit All"));
+        m_fitAllAction->setToolTip(tr("Fit the current model in view"));
+        m_fitAllAction->setStatusTip(tr("Fit the current model in view"));
     }
     if (m_viewFrontAction != nullptr) {
         m_viewFrontAction->setText(tr("View Front"));
+        m_viewFrontAction->setToolTip(tr("Switch to front view"));
+        m_viewFrontAction->setStatusTip(tr("Switch to front view"));
     }
     if (m_viewBackAction != nullptr) {
         m_viewBackAction->setText(tr("View Back"));
+        m_viewBackAction->setToolTip(tr("Switch to back view"));
+        m_viewBackAction->setStatusTip(tr("Switch to back view"));
     }
     if (m_viewLeftAction != nullptr) {
         m_viewLeftAction->setText(tr("View Left"));
+        m_viewLeftAction->setToolTip(tr("Switch to left view"));
+        m_viewLeftAction->setStatusTip(tr("Switch to left view"));
     }
     if (m_viewRightAction != nullptr) {
         m_viewRightAction->setText(tr("View Right"));
+        m_viewRightAction->setToolTip(tr("Switch to right view"));
+        m_viewRightAction->setStatusTip(tr("Switch to right view"));
     }
     if (m_viewTopAction != nullptr) {
         m_viewTopAction->setText(tr("View Top"));
+        m_viewTopAction->setToolTip(tr("Switch to top view"));
+        m_viewTopAction->setStatusTip(tr("Switch to top view"));
     }
     if (m_viewBottomAction != nullptr) {
         m_viewBottomAction->setText(tr("View Bottom"));
+        m_viewBottomAction->setToolTip(tr("Switch to bottom view"));
+        m_viewBottomAction->setStatusTip(tr("Switch to bottom view"));
     }
     if (m_viewIsoAction != nullptr) {
         m_viewIsoAction->setText(tr("View Isometric"));
+        m_viewIsoAction->setToolTip(tr("Switch to isometric view"));
+        m_viewIsoAction->setStatusTip(tr("Switch to isometric view"));
     }
     if (m_wireframeAction != nullptr) {
         m_wireframeAction->setText(tr("Wireframe"));
+        m_wireframeAction->setToolTip(tr("Set model display mode to wireframe"));
+        m_wireframeAction->setStatusTip(tr("Set model display mode to wireframe"));
     }
     if (m_shadedAction != nullptr) {
         m_shadedAction->setText(tr("Shaded"));
+        m_shadedAction->setToolTip(tr("Set model display mode to shaded"));
+        m_shadedAction->setStatusTip(tr("Set model display mode to shaded"));
     }
     if (m_shadedEdgesAction != nullptr) {
         m_shadedEdgesAction->setText(tr("Shaded With Edges"));
+        m_shadedEdgesAction->setToolTip(tr("Set model display mode to shaded with edges"));
+        m_shadedEdgesAction->setStatusTip(tr("Set model display mode to shaded with edges"));
     }
     if (m_selectShapeAction != nullptr) {
         m_selectShapeAction->setText(tr("Select Shape"));
+        m_selectShapeAction->setToolTip(tr("Select entire shapes"));
+        m_selectShapeAction->setStatusTip(tr("Select entire shapes"));
     }
     if (m_selectFaceAction != nullptr) {
         m_selectFaceAction->setText(tr("Select Face"));
+        m_selectFaceAction->setToolTip(tr("Select model faces"));
+        m_selectFaceAction->setStatusTip(tr("Select model faces"));
     }
     if (m_selectEdgeAction != nullptr) {
         m_selectEdgeAction->setText(tr("Select Edge"));
+        m_selectEdgeAction->setToolTip(tr("Select model edges"));
+        m_selectEdgeAction->setStatusTip(tr("Select model edges"));
     }
     if (m_selectVertexAction != nullptr) {
         m_selectVertexAction->setText(tr("Select Vertex"));
+        m_selectVertexAction->setToolTip(tr("Select model vertices"));
+        m_selectVertexAction->setStatusTip(tr("Select model vertices"));
     }
     if (m_clearSelectionAction != nullptr) {
         m_clearSelectionAction->setText(tr("Clear Selection"));
+        m_clearSelectionAction->setToolTip(tr("Clear the current model selection"));
+        m_clearSelectionAction->setStatusTip(tr("Clear the current model selection"));
     }
+    configureActionPresentation();
     if (m_pythonStatusLabel != nullptr) {
         m_pythonStatusLabel->setText(tr("Python: %1").arg(m_pythonRuntimeManager.pythonVersion()));
     }
@@ -1242,6 +1321,92 @@ void MainWindow::retranslateUi()
     }
 
     statusBar()->showMessage(tr("Ready"));
+}
+
+void MainWindow::applyActionIcons()
+{
+    const QString themeName = m_themeManager.currentTheme();
+    const auto setActionIcon = [themeName](QAction *action, const QString &iconName) {
+        if (action == nullptr) {
+            return;
+        }
+        action->setIcon(themedSvgIcon(iconName, themeName));
+    };
+
+    setActionIcon(m_newScriptAction, QStringLiteral("new-file"));
+    setActionIcon(m_openScriptAction, QStringLiteral("open-file"));
+    setActionIcon(m_saveScriptAction, QStringLiteral("save"));
+    setActionIcon(m_saveScriptAsAction, QStringLiteral("save"));
+    setActionIcon(m_saveAllScriptsAction, QStringLiteral("save-all"));
+    setActionIcon(m_runScriptAction, QStringLiteral("run"));
+    setActionIcon(m_stopScriptAction, QStringLiteral("stop"));
+    setActionIcon(m_closeTabAction, QStringLiteral("close-tab"));
+    setActionIcon(m_closeOtherTabsAction, QStringLiteral("close-tab"));
+    setActionIcon(m_closeRightTabsAction, QStringLiteral("close-tab"));
+    setActionIcon(m_closeAllTabsAction, QStringLiteral("close-tab"));
+    setActionIcon(m_reopenSessionAction, QStringLiteral("reopen-session"));
+    setActionIcon(m_settingsAction, QStringLiteral("settings"));
+    setActionIcon(m_pythonToolsAction, QStringLiteral("python-tools"));
+    setActionIcon(m_chooseFileBrowserRootAction, QStringLiteral("file-browser-root"));
+    setActionIcon(m_commandPaletteAction, QStringLiteral("command-palette"));
+    setActionIcon(m_checkUpdatesAction, QStringLiteral("update"));
+    setActionIcon(m_fitAllAction, QStringLiteral("fit-all"));
+    setActionIcon(m_viewFrontAction, QStringLiteral("view-front"));
+    setActionIcon(m_viewBackAction, QStringLiteral("view-back"));
+    setActionIcon(m_viewLeftAction, QStringLiteral("view-left"));
+    setActionIcon(m_viewRightAction, QStringLiteral("view-right"));
+    setActionIcon(m_viewTopAction, QStringLiteral("view-top"));
+    setActionIcon(m_viewBottomAction, QStringLiteral("view-bottom"));
+    setActionIcon(m_viewIsoAction, QStringLiteral("view-iso"));
+    setActionIcon(m_wireframeAction, QStringLiteral("wireframe"));
+    setActionIcon(m_shadedAction, QStringLiteral("shaded"));
+    setActionIcon(m_shadedEdgesAction, QStringLiteral("shaded-edges"));
+    setActionIcon(m_selectShapeAction, QStringLiteral("select-shape"));
+    setActionIcon(m_selectFaceAction, QStringLiteral("select-face"));
+    setActionIcon(m_selectEdgeAction, QStringLiteral("select-edge"));
+    setActionIcon(m_selectVertexAction, QStringLiteral("select-vertex"));
+    setActionIcon(m_clearSelectionAction, QStringLiteral("clear-selection"));
+    setActionIcon(m_lightThemeAction, QStringLiteral("shaded"));
+    setActionIcon(m_darkThemeAction, QStringLiteral("wireframe"));
+}
+
+void MainWindow::configureActionPresentation()
+{
+    const auto configureAction = [](QAction *action) {
+        if (action == nullptr) {
+            return;
+        }
+        action->setIconVisibleInMenu(true);
+        if (action->shortcut().isEmpty()) {
+            return;
+        }
+        const QString shortcutText = action->shortcut().toString(QKeySequence::NativeText);
+        if (!shortcutText.isEmpty()) {
+            const QString baseToolTip = action->statusTip().isEmpty() ? action->toolTip() : action->statusTip();
+            action->setToolTip(QStringLiteral("%1 (%2)").arg(baseToolTip, shortcutText));
+        }
+    };
+
+    for (QAction *action : {m_newScriptAction, m_openScriptAction, m_saveScriptAction, m_saveScriptAsAction, m_saveAllScriptsAction,
+             m_runScriptAction, m_stopScriptAction, m_closeTabAction, m_closeOtherTabsAction, m_closeRightTabsAction, m_closeAllTabsAction,
+             m_reopenSessionAction, m_settingsAction, m_pythonToolsAction, m_chooseFileBrowserRootAction, m_commandPaletteAction,
+             m_checkUpdatesAction, m_fitAllAction, m_viewFrontAction, m_viewBackAction, m_viewLeftAction, m_viewRightAction,
+             m_viewTopAction, m_viewBottomAction, m_viewIsoAction, m_wireframeAction, m_shadedAction, m_shadedEdgesAction,
+             m_selectShapeAction, m_selectFaceAction, m_selectEdgeAction, m_selectVertexAction, m_clearSelectionAction,
+             m_lightThemeAction, m_darkThemeAction}) {
+        configureAction(action);
+    }
+}
+
+void MainWindow::configureToolbar()
+{
+    if (m_mainToolBar == nullptr) {
+        return;
+    }
+    m_mainToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    m_mainToolBar->setIconSize(QSize(20, 20));
+    m_mainToolBar->setMovable(false);
+    m_mainToolBar->setFloatable(false);
 }
 
 void MainWindow::updateTabActionStates()
