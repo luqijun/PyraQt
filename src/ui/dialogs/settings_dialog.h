@@ -4,8 +4,13 @@
 
 class QCheckBox;
 class QComboBox;
+class QDialogButtonBox;
+class QEvent;
+class QFormLayout;
+class QLabel;
 class QLineEdit;
 class QListWidget;
+class QPushButton;
 class QSpinBox;
 class QStackedWidget;
 
@@ -33,10 +38,15 @@ public:
         core::WorkspaceManager &workspaceManager,
         QWidget *parent = nullptr);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
     void createUi();
     void populateValues();
     void applyFilter(const QString &text);
+    void refreshInterpreterPathDisplay();
+    void retranslateUi();
     QWidget *createGeneralPage();
     QWidget *createPythonPage();
     QWidget *createUpdatesPage();
@@ -51,11 +61,16 @@ private:
     QLineEdit *m_searchEdit = nullptr;
     QListWidget *m_categoryList = nullptr;
     QStackedWidget *m_pages = nullptr;
+    QDialogButtonBox *m_buttonBox = nullptr;
+    QFormLayout *m_generalFormLayout = nullptr;
     QComboBox *m_themeCombo = nullptr;
     QComboBox *m_languageCombo = nullptr;
     QLineEdit *m_browserRootEdit = nullptr;
+    QPushButton *m_browserRootBrowseButton = nullptr;
     QCheckBox *m_restoreSessionCheck = nullptr;
+    QFormLayout *m_pythonFormLayout = nullptr;
     QLineEdit *m_interpreterEdit = nullptr;
+    QPushButton *m_interpreterBrowseButton = nullptr;
     QSpinBox *m_timeoutSpin = nullptr;
     QCheckBox *m_macrosEnabledCheck = nullptr;
     QCheckBox *m_filesystemAccessCheck = nullptr;
@@ -63,8 +78,11 @@ private:
     QSpinBox *m_consoleHistorySpin = nullptr;
     QCheckBox *m_codeCompletionCheck = nullptr;
     QSpinBox *m_completionThresholdSpin = nullptr;
+    QLabel *m_pythonInfoLabel = nullptr;
+    QFormLayout *m_updatesFormLayout = nullptr;
     QCheckBox *m_autoUpdateCheck = nullptr;
     QComboBox *m_updateChannelCombo = nullptr;
+    QLabel *m_updatesInfoLabel = nullptr;
 };
 
 } // namespace pyraqt::ui

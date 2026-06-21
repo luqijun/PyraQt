@@ -2,6 +2,7 @@
 
 #include <QWidget>
 
+class QEvent;
 class QTableWidget;
 
 namespace pyraqt::core {
@@ -17,7 +18,11 @@ public:
     explicit PluginManagerPanel(pyraqt::core::PluginManager &pluginManager, QWidget *parent = nullptr);
     [[nodiscard]] QTableWidget *tableForTesting() const;
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    void retranslateUi();
     void refreshTable();
 
     pyraqt::core::PluginManager &m_pluginManager;

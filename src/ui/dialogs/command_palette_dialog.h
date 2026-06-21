@@ -2,6 +2,7 @@
 
 #include <QDialog>
 
+class QEvent;
 class QListWidget;
 class QLineEdit;
 
@@ -17,7 +18,11 @@ class CommandPaletteDialog final : public QDialog {
 public:
     explicit CommandPaletteDialog(pyraqt::core::CommandManager &commandManager, QWidget *parent = nullptr);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    void retranslateUi();
     void refreshList();
 
     pyraqt::core::CommandManager &m_commandManager;

@@ -101,6 +101,7 @@ void PythonConsoleWidget::appendOutput(const QString &prefix, const QString &mes
     if (message.isEmpty()) {
         return;
     }
+    m_outputUsesDefaultMessage = false;
     m_output->appendPlainText(QStringLiteral("[%1] %2").arg(prefix, message));
 }
 
@@ -195,7 +196,7 @@ void PythonConsoleWidget::refreshCompletions()
 
 void PythonConsoleWidget::retranslateUi()
 {
-    if (m_output != nullptr) {
+    if (m_output != nullptr && m_outputUsesDefaultMessage) {
         m_output->setPlainText(tr("Python Console ready. Use pyra or iface to access the embedded PyraQt API."));
     }
     if (m_editor != nullptr) {
@@ -223,6 +224,14 @@ void PythonConsoleWidget::retranslateUi()
     configureButton(m_runEditorButton, tr("Run Editor"), tr("Executes the multi-line editor buffer in the shared interpreter"));
     configureButton(m_inspectButton, tr("Inspect"), tr("Lists the currently available Python global objects"));
     configureButton(m_clearButton, tr("Clear"), tr("Clears the console output"));
+}
+
+void PythonConsoleWidget::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QWidget::changeEvent(event);
 }
 
 void PythonConsoleWidget::applyIcons()
@@ -282,7 +291,15 @@ void PythonConsoleWidget::inspectObjects()
 
 void PythonConsoleWidget::clearConsole()
 {
-    m_output->clear();
+    clearOutput();
+}
+
+void PythonConsoleWidget::clearOutput()
+{
+    if (m_output != nullptr) {
+        m_output->clear();
+    }
+    m_outputUsesDefaultMessage = false;
 }
 
 QStringList PythonConsoleWidget::memberCompletionsForPrefix(const QString &prefix, const QString &contextCode) const

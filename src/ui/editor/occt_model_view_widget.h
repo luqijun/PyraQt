@@ -33,7 +33,7 @@ public:
     void setDisplayMode(pyraqt::core::ModelDisplayMode mode);
     void setSelectionMode(pyraqt::core::ModelSelectionMode mode);
     void fitAll();
-    void setStandardView(const QString &viewName);
+    void setStandardView(const QString &viewKey);
     void clearSelection();
 
     [[nodiscard]] pyraqt::core::ModelDocument document() const;

@@ -27,9 +27,9 @@ ModelPropertiesPanel::ModelPropertiesPanel(QWidget *parent)
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(12, 12, 12, 12);
 
-    auto *form = new QFormLayout();
-    form->setContentsMargins(0, 0, 0, 0);
-    form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
+    m_form = new QFormLayout();
+    m_form->setContentsMargins(0, 0, 0, 0);
+    m_form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
     m_stateLabel = createValueLabel(QStringLiteral("propertiesStateValue"));
     m_fileLabel = createValueLabel(QStringLiteral("propertiesFileValue"));
@@ -44,20 +44,21 @@ ModelPropertiesPanel::ModelPropertiesPanel(QWidget *parent)
     m_selectionBoundsLabel = createValueLabel(QStringLiteral("propertiesSelectionBoundsValue"));
     m_selectionMeasureLabel = createValueLabel(QStringLiteral("propertiesSelectionMeasureValue"));
 
-    form->addRow(tr("State"), m_stateLabel);
-    form->addRow(tr("File"), m_fileLabel);
-    form->addRow(tr("Format"), m_formatLabel);
-    form->addRow(tr("Bounds"), m_boundsLabel);
-    form->addRow(tr("Measures"), m_measureLabel);
-    form->addRow(tr("Solids"), m_solidsLabel);
-    form->addRow(tr("Faces"), m_facesLabel);
-    form->addRow(tr("Edges"), m_edgesLabel);
-    form->addRow(tr("Selection"), m_selectionTypeLabel);
-    form->addRow(tr("Selection Label"), m_selectionLabel);
-    form->addRow(tr("Selection Bounds"), m_selectionBoundsLabel);
-    form->addRow(tr("Measure"), m_selectionMeasureLabel);
+    m_form->addRow(QString(), m_stateLabel);
+    m_form->addRow(QString(), m_fileLabel);
+    m_form->addRow(QString(), m_formatLabel);
+    m_form->addRow(QString(), m_boundsLabel);
+    m_form->addRow(QString(), m_measureLabel);
+    m_form->addRow(QString(), m_solidsLabel);
+    m_form->addRow(QString(), m_facesLabel);
+    m_form->addRow(QString(), m_edgesLabel);
+    m_form->addRow(QString(), m_selectionTypeLabel);
+    m_form->addRow(QString(), m_selectionLabel);
+    m_form->addRow(QString(), m_selectionBoundsLabel);
+    m_form->addRow(QString(), m_selectionMeasureLabel);
 
-    layout->addLayout(form);
+    layout->addLayout(m_form);
+    retranslateUi();
     showPlaceholder(tr("Select a model to inspect its properties."));
 }
 
@@ -137,6 +138,33 @@ bool ModelPropertiesPanel::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QWidget::eventFilter(watched, event);
+}
+
+void ModelPropertiesPanel::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QWidget::changeEvent(event);
+}
+
+void ModelPropertiesPanel::retranslateUi()
+{
+    if (m_form == nullptr) {
+        return;
+    }
+    m_form->setWidget(0, QFormLayout::LabelRole, new QLabel(tr("State"), this));
+    m_form->setWidget(1, QFormLayout::LabelRole, new QLabel(tr("File"), this));
+    m_form->setWidget(2, QFormLayout::LabelRole, new QLabel(tr("Format"), this));
+    m_form->setWidget(3, QFormLayout::LabelRole, new QLabel(tr("Bounds"), this));
+    m_form->setWidget(4, QFormLayout::LabelRole, new QLabel(tr("Measures"), this));
+    m_form->setWidget(5, QFormLayout::LabelRole, new QLabel(tr("Solids"), this));
+    m_form->setWidget(6, QFormLayout::LabelRole, new QLabel(tr("Faces"), this));
+    m_form->setWidget(7, QFormLayout::LabelRole, new QLabel(tr("Edges"), this));
+    m_form->setWidget(8, QFormLayout::LabelRole, new QLabel(tr("Selection"), this));
+    m_form->setWidget(9, QFormLayout::LabelRole, new QLabel(tr("Selection Label"), this));
+    m_form->setWidget(10, QFormLayout::LabelRole, new QLabel(tr("Selection Bounds"), this));
+    m_form->setWidget(11, QFormLayout::LabelRole, new QLabel(tr("Measure"), this));
 }
 
 void ModelPropertiesPanel::updateDisplayedValue(QLabel *label)

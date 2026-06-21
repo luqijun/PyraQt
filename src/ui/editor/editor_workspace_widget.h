@@ -4,6 +4,7 @@
 
 #include <QWidget>
 
+class QEvent;
 class QTabWidget;
 
 namespace pyraqt::core {
@@ -67,6 +68,9 @@ public:
     [[nodiscard]] core::WorkspaceSession captureSession(const QStringList &recentFiles, const QString &fileBrowserRoot) const;
     void restoreSession(const core::WorkspaceSession &session);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 signals:
     void currentFilePathChanged(const QString &filePath);
     void currentCursorChanged(int line, int column);
@@ -79,6 +83,7 @@ signals:
     void openPathFailed(const QString &filePath, const QString &message);
 
 private:
+    void retranslateUi();
     ScriptEditorWidget *createEditor();
     ModelDocumentWidget *createModelDocumentWidget(const pyraqt::core::ModelDocument &document);
     EditorPlaceholderWidget *createPreviewUnavailableWidget(const QString &filePath);

@@ -68,9 +68,9 @@ void ModelDocumentWidget::fitAll()
     m_viewWidget->fitAll();
 }
 
-void ModelDocumentWidget::setStandardView(const QString &viewName)
+void ModelDocumentWidget::setStandardView(const QString &viewKey)
 {
-    m_viewWidget->setStandardView(viewName);
+    m_viewWidget->setStandardView(viewKey);
 }
 
 void ModelDocumentWidget::clearSelection()

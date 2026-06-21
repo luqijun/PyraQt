@@ -2,6 +2,7 @@
 
 #include <QWidget>
 
+class QEvent;
 class QLabel;
 class QTextEdit;
 
@@ -62,6 +63,7 @@ signals:
     void cursorPositionChanged(int line, int column);
 
 private:
+    void retranslateUi();
     void setDocumentMode(DocumentMode mode);
     void updateDocumentModeFromPath(const QString &filePath);
     void configureCodeCompletion();
@@ -72,6 +74,7 @@ private:
     void showDotMemberCompletion();
     void setModified(bool modified);
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 #if PYRAQT_HAS_QSCINTILLA
     QsciScintilla *m_editor = nullptr;
@@ -91,6 +94,7 @@ private:
     bool m_codeCompletionEnabled = false;
     bool m_dotCompletionEnabled = false;
     bool m_modified = false;
+    bool m_hasCustomPlaceholderMessage = false;
 };
 
 } // namespace pyraqt::ui

@@ -4,6 +4,8 @@
 
 #include <QWidget>
 
+class QEvent;
+class QFormLayout;
 class QLabel;
 class QPlainTextEdit;
 
@@ -18,8 +20,13 @@ public:
     void setSummary(const pyraqt::core::ModelImportSummary &summary);
     [[nodiscard]] pyraqt::core::ModelImportSummary summary() const;
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    void retranslateUi();
     pyraqt::core::ModelImportSummary m_summary;
+    QFormLayout *m_summaryLayout = nullptr;
     QLabel *m_fileValueLabel = nullptr;
     QLabel *m_formatValueLabel = nullptr;
     QLabel *m_statusValueLabel = nullptr;

@@ -1,5 +1,6 @@
 #include "ui/panels/files/file_browser_panel.h"
 
+#include <QEvent>
 #include <QDir>
 #include <QFileInfo>
 #include <QFileSystemModel>
@@ -44,8 +45,6 @@ FileBrowserPanel::FileBrowserPanel(QWidget *parent)
     m_treeView->setRootIndex(m_model->index(QDir::homePath()));
     m_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_treeView->setMouseTracking(true);
-    m_treeView->setAccessibleName(tr("File Browser"));
-    m_treeView->setAccessibleDescription(tr("Local file browser for opening Python scripts"));
     m_treeView->header()->setStretchLastSection(true);
     layout->addWidget(m_treeView);
 
@@ -56,6 +55,7 @@ FileBrowserPanel::FileBrowserPanel(QWidget *parent)
         }
     });
     connect(m_treeView, &QTreeView::customContextMenuRequested, this, &FileBrowserPanel::showContextMenu);
+    retranslateUi();
 }
 
 void FileBrowserPanel::setRootPath(const QString &path)
@@ -75,6 +75,22 @@ QString FileBrowserPanel::toolTipForIndex(const QModelIndex &index) const
         return {};
     }
     return index.data(QFileSystemModel::FilePathRole).toString();
+}
+
+void FileBrowserPanel::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QWidget::changeEvent(event);
+}
+
+void FileBrowserPanel::retranslateUi()
+{
+    if (m_treeView != nullptr) {
+        m_treeView->setAccessibleName(tr("File Browser"));
+        m_treeView->setAccessibleDescription(tr("Local file browser for opening Python scripts"));
+    }
 }
 
 void FileBrowserPanel::showContextMenu(const QPoint &position)

@@ -68,7 +68,7 @@ ScriptEditorWidget::ScriptEditorWidget(core::PythonRuntimeManager *runtimeManage
     });
     layout->addWidget(m_editor);
 #else
-    m_placeholder = new QLabel(tr("Text editor unavailable on this build."), this);
+    m_placeholder = new QLabel(this);
     m_placeholder->setAlignment(Qt::AlignCenter);
     m_placeholder->setWordWrap(true);
     layout->addWidget(m_placeholder);
@@ -76,6 +76,7 @@ ScriptEditorWidget::ScriptEditorWidget(core::PythonRuntimeManager *runtimeManage
 
     setDocumentMode(DocumentMode::PlainText);
     applyTheme(m_appliedTheme);
+    retranslateUi();
 }
 
 ScriptEditorWidget::~ScriptEditorWidget()
@@ -294,7 +295,18 @@ void ScriptEditorWidget::setEditorMessage(const QString &message)
     Q_UNUSED(message)
 #else
     if (m_placeholder != nullptr) {
+        m_hasCustomPlaceholderMessage = true;
         m_placeholder->setText(message);
+    }
+#endif
+}
+
+void ScriptEditorWidget::retranslateUi()
+{
+#if PYRAQT_HAS_QSCINTILLA
+#else
+    if (m_placeholder != nullptr && !m_hasCustomPlaceholderMessage) {
+        m_placeholder->setText(tr("Text editor unavailable on this build."));
     }
 #endif
 }
@@ -550,6 +562,14 @@ bool ScriptEditorWidget::eventFilter(QObject *watched, QEvent *event)
     Q_UNUSED(event)
 #endif
     return QWidget::eventFilter(watched, event);
+}
+
+void ScriptEditorWidget::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QWidget::changeEvent(event);
 }
 
 } // namespace pyraqt::ui

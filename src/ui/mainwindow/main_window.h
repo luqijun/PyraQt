@@ -9,6 +9,7 @@ class QMenu;
 class QPlainTextEdit;
 class QDockWidget;
 class QToolBar;
+class QToolButton;
 
 namespace pyraqt::core {
 class CommandManager;
@@ -92,8 +93,11 @@ private:
     QString currentScriptFilePath() const;
     void openCommandPalette();
     void appendConsoleLine(const QString &prefix, const QString &message);
+    void clearConsoleOutput();
+    void clearLogViewer();
     void restoreSession();
     void retranslateUi();
+    void refreshBuiltInCommands();
     void applyActionIcons();
     void configureActionPresentation();
     void configureToolbar();
@@ -106,6 +110,7 @@ private:
     [[nodiscard]] QStringList openPathsUnder(const QString &path) const;
     bool removePathRecursively(const QString &path);
     QDockWidget *createTextDock(const QString &objectName, const QString &title, const QString &body);
+    QWidget *createClearableDockContent(QWidget *contentWidget, QToolButton **clearButtonOut);
 
     core::ConfigManager &m_configManager;
     core::LogManager &m_logManager;
@@ -126,6 +131,7 @@ private:
     QDockWidget *m_propertiesDock = nullptr;
     EditorWorkspaceWidget *m_workspaceWidget = nullptr;
     PythonConsoleWidget *m_console = nullptr;
+    QPlainTextEdit *m_logViewer = nullptr;
     QLabel *m_pythonStatusLabel = nullptr;
     QLabel *m_documentStatusLabel = nullptr;
     QLabel *m_fileStatusLabel = nullptr;
@@ -174,6 +180,8 @@ private:
     QAction *m_selectEdgeAction = nullptr;
     QAction *m_selectVertexAction = nullptr;
     QAction *m_clearSelectionAction = nullptr;
+    QToolButton *m_clearConsoleDockButton = nullptr;
+    QToolButton *m_clearLogViewerDockButton = nullptr;
     bool m_sessionSaved = false;
 };
 

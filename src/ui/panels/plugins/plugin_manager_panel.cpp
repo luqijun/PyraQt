@@ -3,6 +3,7 @@
 #include "core/plugin/plugin_manager.h"
 #include "core/plugin/plugin_types.h"
 
+#include <QEvent>
 #include <QCheckBox>
 #include <QHeaderView>
 #include <QPushButton>
@@ -22,15 +23,6 @@ PluginManagerPanel::PluginManagerPanel(pyraqt::core::PluginManager &pluginManage
     m_table = new QTableWidget(this);
     m_table->setObjectName(QStringLiteral("pluginManagerTable"));
     m_table->setColumnCount(7);
-    m_table->setHorizontalHeaderLabels({
-        tr("Enabled"),
-        tr("Name"),
-        tr("Type"),
-        tr("Version"),
-        tr("Status"),
-        tr("Actions"),
-        tr("Description"),
-    });
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     layout->addWidget(m_table);
 
@@ -38,7 +30,32 @@ PluginManagerPanel::PluginManagerPanel(pyraqt::core::PluginManager &pluginManage
         refreshTable();
     });
 
+    retranslateUi();
     refreshTable();
+}
+
+void PluginManagerPanel::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+        refreshTable();
+    }
+    QWidget::changeEvent(event);
+}
+
+void PluginManagerPanel::retranslateUi()
+{
+    if (m_table != nullptr) {
+        m_table->setHorizontalHeaderLabels({
+            tr("Enabled"),
+            tr("Name"),
+            tr("Type"),
+            tr("Version"),
+            tr("Status"),
+            tr("Actions"),
+            tr("Description"),
+        });
+    }
 }
 
 void PluginManagerPanel::refreshTable()

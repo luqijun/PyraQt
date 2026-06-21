@@ -45,9 +45,13 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QSettings>
 #include <QStatusBar>
 #include <QToolBar>
+#include <QToolButton>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
 
 namespace pyraqt::ui {
 
@@ -104,6 +108,7 @@ MainWindow::MainWindow(
         }
     });
     connect(&m_i18nManager, &core::I18nManager::localeChanged, this, [this] {
+        refreshBuiltInCommands();
         retranslateUi();
         refreshRecentFilesMenu();
     });
@@ -332,7 +337,7 @@ void MainWindow::createDocks()
     auto *consoleDock = new QDockWidget(tr("Python Console"), this);
     consoleDock->setObjectName(QStringLiteral("consoleDock"));
     m_console = new PythonConsoleWidget(m_pythonRuntimeManager, m_scriptExecutionManager, &m_themeManager, consoleDock);
-    consoleDock->setWidget(m_console);
+    consoleDock->setWidget(createClearableDockContent(m_console, &m_clearConsoleDockButton));
     addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
 
     addDockWidget(Qt::BottomDockWidgetArea,
@@ -492,6 +497,13 @@ void MainWindow::createScriptActions()
     m_closeTabAction->setShortcut(QKeySequence::Close);
     m_commandPaletteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_P));
     m_fitAllAction->setShortcut(QKeySequence(Qt::Key_F));
+    m_viewFrontAction->setData(QStringLiteral("front"));
+    m_viewBackAction->setData(QStringLiteral("back"));
+    m_viewLeftAction->setData(QStringLiteral("left"));
+    m_viewRightAction->setData(QStringLiteral("right"));
+    m_viewTopAction->setData(QStringLiteral("top"));
+    m_viewBottomAction->setData(QStringLiteral("bottom"));
+    m_viewIsoAction->setData(QStringLiteral("isometric"));
     m_wireframeAction->setCheckable(true);
     m_shadedAction->setCheckable(true);
     m_shadedEdgesAction->setCheckable(true);
@@ -797,6 +809,12 @@ void MainWindow::registerBuiltInCommands()
         [this] { m_clearSelectionAction->trigger(); });
 }
 
+void MainWindow::refreshBuiltInCommands()
+{
+    m_commandManager.unregisterCommands(QStringLiteral("builtin"));
+    registerBuiltInCommands();
+}
+
 void MainWindow::runCurrentScript()
 {
     if (m_workspaceWidget == nullptr || !m_workspaceWidget->currentFileRunnable()) {
@@ -830,7 +848,7 @@ void MainWindow::setModelViewPreset()
     if (auto *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
         QAction *action = qobject_cast<QAction *>(sender());
         if (action != nullptr) {
-            documentWidget->setStandardView(action->text());
+            documentWidget->setStandardView(action->data().toString());
         }
     }
 }
@@ -1057,6 +1075,20 @@ void MainWindow::appendConsoleLine(const QString &prefix, const QString &message
         return;
     }
     m_console->appendOutput(prefix, message);
+}
+
+void MainWindow::clearConsoleOutput()
+{
+    if (m_console != nullptr) {
+        m_console->clearOutput();
+    }
+}
+
+void MainWindow::clearLogViewer()
+{
+    if (m_logViewer != nullptr) {
+        m_logViewer->clear();
+    }
 }
 
 void MainWindow::restoreSession()
@@ -1318,6 +1350,18 @@ void MainWindow::retranslateUi()
         m_clearSelectionAction->setText(tr("Clear Selection"));
         m_clearSelectionAction->setToolTip(tr("Clear the current model selection"));
         m_clearSelectionAction->setStatusTip(tr("Clear the current model selection"));
+    }
+    if (m_clearConsoleDockButton != nullptr) {
+        m_clearConsoleDockButton->setIcon(themedSvgIcon(QStringLiteral("clear-console"), m_themeManager.currentTheme(), QSize(20, 20)));
+        m_clearConsoleDockButton->setToolTip(tr("Clear console output"));
+        m_clearConsoleDockButton->setStatusTip(tr("Clear console output"));
+        m_clearConsoleDockButton->setAccessibleName(tr("Clear Console"));
+    }
+    if (m_clearLogViewerDockButton != nullptr) {
+        m_clearLogViewerDockButton->setIcon(themedSvgIcon(QStringLiteral("clear-console"), m_themeManager.currentTheme(), QSize(20, 20)));
+        m_clearLogViewerDockButton->setToolTip(tr("Clear log output"));
+        m_clearLogViewerDockButton->setStatusTip(tr("Clear log output"));
+        m_clearLogViewerDockButton->setAccessibleName(tr("Clear Log"));
     }
     configureActionPresentation();
     if (m_pythonStatusLabel != nullptr) {
@@ -1645,8 +1689,44 @@ QDockWidget *MainWindow::createTextDock(const QString &objectName, const QString
     auto *content = new QPlainTextEdit(dock);
     content->setReadOnly(true);
     content->setPlainText(body);
-    dock->setWidget(content);
+    if (objectName == QStringLiteral("logViewerDock")) {
+        m_logViewer = content;
+        dock->setWidget(createClearableDockContent(content, &m_clearLogViewerDockButton));
+    } else {
+        dock->setWidget(content);
+    }
     return dock;
+}
+
+QWidget *MainWindow::createClearableDockContent(QWidget *contentWidget, QToolButton **clearButtonOut)
+{
+    auto *container = new QWidget(this);
+    auto *layout = new QVBoxLayout(container);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+
+    auto *buttonRow = new QWidget(container);
+    auto *buttonLayout = new QHBoxLayout(buttonRow);
+    buttonLayout->setContentsMargins(6, 6, 6, 0);
+    buttonLayout->addStretch();
+
+    auto *clearButton = new QToolButton(buttonRow);
+    clearButton->setAutoRaise(true);
+    buttonLayout->addWidget(clearButton);
+    layout->addWidget(buttonRow);
+    layout->addWidget(contentWidget);
+
+    if (clearButtonOut != nullptr) {
+        *clearButtonOut = clearButton;
+    }
+
+    if (contentWidget == m_console) {
+        connect(clearButton, &QToolButton::clicked, this, &MainWindow::clearConsoleOutput);
+    } else if (contentWidget == m_logViewer) {
+        connect(clearButton, &QToolButton::clicked, this, &MainWindow::clearLogViewer);
+    }
+
+    return container;
 }
 
 void MainWindow::updateFileBrowserRootAfterPathChange(const QString &oldPath, const QString &newPath)

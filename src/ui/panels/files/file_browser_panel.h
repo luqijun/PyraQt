@@ -2,6 +2,7 @@
 
 #include <QWidget>
 
+class QEvent;
 class QFileSystemModel;
 class QModelIndex;
 class QPoint;
@@ -24,7 +25,11 @@ signals:
     void renameRequested(const QString &path);
     void deleteRequested(const QString &path);
 
+protected:
+    void changeEvent(QEvent *event) override;
+
 private:
+    void retranslateUi();
     void showContextMenu(const QPoint &position);
 
     QFileSystemModel *m_model = nullptr;

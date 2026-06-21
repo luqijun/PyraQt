@@ -154,28 +154,52 @@ int occtSelectionMode(const pyraqt::core::ModelSelectionMode mode)
     }
 }
 
-V3d_TypeOfOrientation orientationForName(const QString &viewName)
+V3d_TypeOfOrientation orientationForKey(const QString &viewKey)
 {
-    const QString normalized = viewName.trimmed().toLower();
-    if (normalized.contains(QStringLiteral("front"))) {
+    const QString normalized = viewKey.trimmed().toLower();
+    if (normalized == QStringLiteral("front")) {
         return V3d_TypeOfOrientation_Zup_Front;
     }
-    if (normalized.contains(QStringLiteral("back"))) {
+    if (normalized == QStringLiteral("back")) {
         return V3d_TypeOfOrientation_Zup_Back;
     }
-    if (normalized.contains(QStringLiteral("left"))) {
+    if (normalized == QStringLiteral("left")) {
         return V3d_TypeOfOrientation_Zup_Left;
     }
-    if (normalized.contains(QStringLiteral("right"))) {
+    if (normalized == QStringLiteral("right")) {
         return V3d_TypeOfOrientation_Zup_Right;
     }
-    if (normalized.contains(QStringLiteral("top"))) {
+    if (normalized == QStringLiteral("top")) {
         return V3d_TypeOfOrientation_Zup_Top;
     }
-    if (normalized.contains(QStringLiteral("bottom"))) {
+    if (normalized == QStringLiteral("bottom")) {
         return V3d_TypeOfOrientation_Zup_Bottom;
     }
     return V3d_TypeOfOrientation_Zup_AxoRight;
+}
+
+QString displayNameForViewKey(const QString &viewKey)
+{
+    const QString normalized = viewKey.trimmed().toLower();
+    if (normalized == QStringLiteral("front")) {
+        return OcctModelViewWidget::tr("Front");
+    }
+    if (normalized == QStringLiteral("back")) {
+        return OcctModelViewWidget::tr("Back");
+    }
+    if (normalized == QStringLiteral("left")) {
+        return OcctModelViewWidget::tr("Left");
+    }
+    if (normalized == QStringLiteral("right")) {
+        return OcctModelViewWidget::tr("Right");
+    }
+    if (normalized == QStringLiteral("top")) {
+        return OcctModelViewWidget::tr("Top");
+    }
+    if (normalized == QStringLiteral("bottom")) {
+        return OcctModelViewWidget::tr("Bottom");
+    }
+    return OcctModelViewWidget::tr("Isometric");
 }
 #endif
 
@@ -244,17 +268,17 @@ void OcctModelViewWidget::fitAll()
     emit statusMessageChanged(tr("Fit All"));
 }
 
-void OcctModelViewWidget::setStandardView(const QString &viewName)
+void OcctModelViewWidget::setStandardView(const QString &viewKey)
 {
 #if PYRAQT_HAS_OCCT
     if (!m_view.IsNull()) {
-        m_view->SetProj(orientationForName(viewName));
+        m_view->SetProj(orientationForKey(viewKey));
         m_view->FitAll(0.01, Standard_True);
         m_view->ZFitAll();
         m_view->Redraw();
     }
 #endif
-    emit statusMessageChanged(tr("View: %1").arg(viewName));
+    emit statusMessageChanged(tr("View: %1").arg(displayNameForViewKey(viewKey)));
 }
 
 void OcctModelViewWidget::clearSelection()

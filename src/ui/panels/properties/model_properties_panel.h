@@ -4,6 +4,7 @@
 
 #include <QWidget>
 
+class QEvent;
 class QLabel;
 class QFormLayout;
 
@@ -22,12 +23,15 @@ public:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
+    void changeEvent(QEvent *event) override;
 
 private:
+    void retranslateUi();
     void setValue(QLabel *label, const QString &value);
     void updateDisplayedValue(QLabel *label);
     QLabel *createValueLabel(const QString &objectName);
 
+    QFormLayout *m_form = nullptr;
     QLabel *m_stateLabel = nullptr;
     QLabel *m_fileLabel = nullptr;
     QLabel *m_formatLabel = nullptr;

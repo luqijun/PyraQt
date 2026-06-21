@@ -9,6 +9,7 @@
 #include "ui/editor/script_editor_widget.h"
 
 #include <QAction>
+#include <QEvent>
 #include <QFile>
 #include <QFileInfo>
 #include <QMenu>
@@ -133,6 +134,7 @@ EditorWorkspaceWidget::EditorWorkspaceWidget(
             }
         }
     });
+    retranslateUi();
 }
 
 ScriptEditorWidget *EditorWorkspaceWidget::newDocument()
@@ -379,6 +381,31 @@ core::WorkspaceSession EditorWorkspaceWidget::captureSession(const QStringList &
     session.recentFiles = recentFiles;
     session.fileBrowserRoot = fileBrowserRoot;
     return session;
+}
+
+void EditorWorkspaceWidget::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+    }
+    QWidget::changeEvent(event);
+}
+
+void EditorWorkspaceWidget::retranslateUi()
+{
+    if (m_tabWidget != nullptr) {
+        m_tabWidget->setAccessibleName(tr("Document Workspace"));
+        m_tabWidget->setAccessibleDescription(tr("Tabbed workspace for text files, imported models, and preview placeholders"));
+    }
+    for (int index = 0; index < m_tabWidget->count(); ++index) {
+        if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(m_tabWidget->widget(index))) {
+            placeholder->setTitle(tr("Cannot display this file in the editor"));
+            placeholder->setMessage(tr("This file may be binary, or direct editing is not supported in the current version."));
+        }
+    }
+    for (int index = 0; index < m_tabWidget->count(); ++index) {
+        updateTabTitle(index);
+    }
 }
 
 void EditorWorkspaceWidget::restoreSession(const core::WorkspaceSession &session)

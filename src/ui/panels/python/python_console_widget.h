@@ -41,6 +41,10 @@ public:
     void submitCommandForTesting(const QString &command);
     [[nodiscard]] bool actionButtonsShowText() const;
     [[nodiscard]] bool actionButtonsHaveIcons() const;
+    void clearOutput();
+
+protected:
+    void changeEvent(QEvent *event) override;
 
 private:
     void refreshCompletions();
@@ -67,6 +71,7 @@ private:
     QStringList m_completionWords;
     QStringList m_history;
     int m_historyIndex = 0;
+    bool m_outputUsesDefaultMessage = true;
 };
 
 } // namespace pyraqt::ui

@@ -17,6 +17,9 @@
 #include "ui/common/file_dialog_utils.h"
 #include "ui/common/python_completion_line_edit.h"
 #include "ui/common/python_completion_text_edit.h"
+#include "ui/dialogs/command_palette_dialog.h"
+#include "ui/dialogs/python_tools_dialog.h"
+#include "ui/dialogs/settings_dialog.h"
 #include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
@@ -35,15 +38,18 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QMenu>
+#include <QPlainTextEdit>
 #include <QSizePolicy>
+#include <QToolButton>
 #include <QTableWidget>
 #include <QTimer>
 #include <QToolBar>
-#include <QToolButton>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTreeView>
+#include <QStandardPaths>
 #include <memory>
 
 namespace {
@@ -69,6 +75,10 @@ private slots:
     void consoleEditorTriggersDottedCompletion();
     void consoleConfiguresCodeCompletionAndRuntimeGlobals();
     void mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange();
+    void localeSwitchRefreshesOpenWidgetsAndCommands();
+    void modelViewActionsUseStableViewKeys();
+    void settingsDialogShowsResolvedInterpreterPath();
+    void mainWindowConsoleAndLogDocksCanBeCleared();
     void mainWindowPropertiesDockTracksCurrentDocumentKind();
     void modelPropertiesPanelUsesFixedMinimumWidthAndTooltips();
     void fileBrowserPanelProvidesTooltips();
@@ -691,6 +701,229 @@ void UiThemeTest::mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange()
     QVERIFY(themeManager.setDarkTheme());
     QVERIFY(!runAction->icon().isNull());
     QVERIFY(console->actionButtonsHaveIcons());
+}
+
+void UiThemeTest::localeSwitchRefreshesOpenWidgetsAndCommands()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::I18nManager i18nManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    pyraqt::core::UpdateManager updateManager(configManager, logManager);
+    pyraqt::core::CrashRecoveryManager crashRecoveryManager(configManager, logManager);
+
+    pyraqt::ui::MainWindow window(configManager,
+        logManager,
+        modelImportManager,
+        themeManager,
+        i18nManager,
+        runtimeManager,
+        executionManager,
+        commandManager,
+        pluginManager,
+        workspaceManager,
+        updateManager,
+        crashRecoveryManager);
+    window.show();
+    QCoreApplication::processEvents();
+
+    pyraqt::ui::SettingsDialog settingsDialog(configManager, themeManager, i18nManager, runtimeManager, updateManager, workspaceManager);
+    settingsDialog.show();
+    pyraqt::ui::CommandPaletteDialog paletteDialog(commandManager);
+    paletteDialog.show();
+    pyraqt::ui::PythonToolsDialog pythonToolsDialog(runtimeManager, executionManager);
+    pythonToolsDialog.show();
+    QCoreApplication::processEvents();
+
+    QVERIFY(i18nManager.setLocale(QStringLiteral("zh_CN")) || i18nManager.currentLocale() == QStringLiteral("en_US"));
+    QCoreApplication::processEvents();
+
+    if (i18nManager.currentLocale() == QStringLiteral("zh_CN")) {
+        QCOMPARE(window.findChild<QMenu *>(QStringLiteral("fileMenu"))->title(), QStringLiteral("文件(&F)"));
+        QCOMPARE(settingsDialog.windowTitle(), QStringLiteral("设置"));
+        QCOMPARE(paletteDialog.windowTitle(), QStringLiteral("命令面板"));
+        QCOMPARE(pythonToolsDialog.windowTitle(), QStringLiteral("Python 工具"));
+
+        bool hasChineseBuiltIn = false;
+        for (const auto &command : commandManager.commands()) {
+            if (command.ownerId == QStringLiteral("builtin") && command.source == QStringLiteral("内置")) {
+                hasChineseBuiltIn = true;
+                break;
+            }
+        }
+        QVERIFY(hasChineseBuiltIn);
+    }
+}
+
+void UiThemeTest::modelViewActionsUseStableViewKeys()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::I18nManager i18nManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    pyraqt::core::UpdateManager updateManager(configManager, logManager);
+    pyraqt::core::CrashRecoveryManager crashRecoveryManager(configManager, logManager);
+
+    pyraqt::ui::MainWindow window(configManager,
+        logManager,
+        modelImportManager,
+        themeManager,
+        i18nManager,
+        runtimeManager,
+        executionManager,
+        commandManager,
+        pluginManager,
+        workspaceManager,
+        updateManager,
+        crashRecoveryManager);
+
+    auto *viewToolBar = window.findChild<QToolBar *>(QStringLiteral("viewToolBar"));
+    QVERIFY(viewToolBar != nullptr);
+
+    QAction *frontAction = nullptr;
+    QAction *isoAction = nullptr;
+    for (QAction *action : window.findChildren<QAction *>()) {
+        if (action != nullptr && action->data().toString() == QStringLiteral("front")) {
+            frontAction = action;
+        }
+        if (action != nullptr && action->data().toString() == QStringLiteral("isometric")) {
+            isoAction = action;
+        }
+    }
+    QVERIFY(frontAction != nullptr);
+    QVERIFY(isoAction != nullptr);
+    QCOMPARE(frontAction->data().toString(), QStringLiteral("front"));
+    QCOMPARE(isoAction->data().toString(), QStringLiteral("isometric"));
+}
+
+void UiThemeTest::settingsDialogShowsResolvedInterpreterPath()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::ThemeManager themeManager(*qobject_cast<QApplication *>(QCoreApplication::instance()));
+    pyraqt::core::I18nManager i18nManager(*qobject_cast<QApplication *>(QCoreApplication::instance()));
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::UpdateManager updateManager(configManager, logManager);
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+
+    runtimeManager.setInterpreterPath(QStringLiteral("python3"));
+
+    pyraqt::ui::SettingsDialog dialog(configManager, themeManager, i18nManager, runtimeManager, updateManager, workspaceManager);
+    dialog.show();
+    QCoreApplication::processEvents();
+
+    const QList<QLineEdit *> edits = dialog.findChildren<QLineEdit *>();
+    QLineEdit *interpreterEdit = nullptr;
+    for (QLineEdit *edit : edits) {
+        if (edit != nullptr && edit->toolTip().contains(QStringLiteral("python"))) {
+            interpreterEdit = edit;
+            break;
+        }
+    }
+    QVERIFY(interpreterEdit != nullptr);
+
+    const QString resolvedPython = QStandardPaths::findExecutable(QStringLiteral("python3"));
+    if (!resolvedPython.isEmpty()) {
+        QCOMPARE(interpreterEdit->text(), QFileInfo(resolvedPython).absoluteFilePath());
+        QCOMPARE(interpreterEdit->toolTip(), QFileInfo(resolvedPython).absoluteFilePath());
+    } else {
+        QCOMPARE(interpreterEdit->text(), QStringLiteral("python3"));
+    }
+}
+
+void UiThemeTest::mainWindowConsoleAndLogDocksCanBeCleared()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::I18nManager i18nManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    pyraqt::core::UpdateManager updateManager(configManager, logManager);
+    pyraqt::core::CrashRecoveryManager crashRecoveryManager(configManager, logManager);
+
+    pyraqt::ui::MainWindow window(configManager,
+        logManager,
+        modelImportManager,
+        themeManager,
+        i18nManager,
+        runtimeManager,
+        executionManager,
+        commandManager,
+        pluginManager,
+        workspaceManager,
+        updateManager,
+        crashRecoveryManager);
+    window.show();
+    QCoreApplication::processEvents();
+
+    auto *console = window.findChild<pyraqt::ui::PythonConsoleWidget *>();
+    QVERIFY(console != nullptr);
+    console->appendOutput(QStringLiteral("stdout"), QStringLiteral("console line"));
+
+    auto *logViewerDock = window.findChild<QDockWidget *>(QStringLiteral("logViewerDock"));
+    QVERIFY(logViewerDock != nullptr);
+    auto *logViewer = logViewerDock->findChild<QPlainTextEdit *>();
+    QVERIFY(logViewer != nullptr);
+    logViewer->appendPlainText(QStringLiteral("log line"));
+
+    const QList<QToolButton *> clearButtons = window.findChildren<QToolButton *>();
+    QToolButton *clearConsoleButton = nullptr;
+    QToolButton *clearLogButton = nullptr;
+    for (QToolButton *button : clearButtons) {
+        if (button->toolTip() == QStringLiteral("Clear console output")) {
+            clearConsoleButton = button;
+        } else if (button->toolTip() == QStringLiteral("Clear log output")) {
+            clearLogButton = button;
+        }
+    }
+    QVERIFY(clearConsoleButton != nullptr);
+    QVERIFY(clearLogButton != nullptr);
+
+    clearConsoleButton->click();
+    clearLogButton->click();
+    QCoreApplication::processEvents();
+
+    QVERIFY(console->outputTextForTesting().isEmpty());
+    QVERIFY(logViewer->toPlainText().isEmpty());
 }
 
 void UiThemeTest::mainWindowPropertiesDockTracksCurrentDocumentKind()

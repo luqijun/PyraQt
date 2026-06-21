@@ -2,6 +2,7 @@
 
 #include "core/command/command_manager.h"
 
+#include <QEvent>
 #include <QDialogButtonBox>
 #include <QLineEdit>
 #include <QListWidget>
@@ -14,12 +15,10 @@ CommandPaletteDialog::CommandPaletteDialog(pyraqt::core::CommandManager &command
     : QDialog(parent)
     , m_commandManager(commandManager)
 {
-    setWindowTitle(tr("Command Palette"));
     resize(560, 420);
 
     auto *layout = new QVBoxLayout(this);
     m_searchEdit = new QLineEdit(this);
-    m_searchEdit->setPlaceholderText(tr("Search commands..."));
     m_resultsList = new QListWidget(this);
     auto *buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, this);
 
@@ -44,7 +43,25 @@ CommandPaletteDialog::CommandPaletteDialog(pyraqt::core::CommandManager &command
         refreshList();
     });
 
+    retranslateUi();
     refreshList();
+}
+
+void CommandPaletteDialog::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        retranslateUi();
+        refreshList();
+    }
+    QDialog::changeEvent(event);
+}
+
+void CommandPaletteDialog::retranslateUi()
+{
+    setWindowTitle(tr("Command Palette"));
+    if (m_searchEdit != nullptr) {
+        m_searchEdit->setPlaceholderText(tr("Search commands..."));
+    }
 }
 
 void CommandPaletteDialog::refreshList()

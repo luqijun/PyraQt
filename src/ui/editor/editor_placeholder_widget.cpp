@@ -1,5 +1,6 @@
 #include "ui/editor/editor_placeholder_widget.h"
 
+#include <QEvent>
 #include <QFrame>
 #include <QLabel>
 #include <QPalette>
@@ -28,31 +29,32 @@ EditorPlaceholderWidget::EditorPlaceholderWidget(
     panelLayout->setContentsMargins(24, 24, 24, 24);
     panelLayout->setSpacing(12);
 
-    auto *titleLabel = new QLabel(title, panel);
-    QFont titleFont = titleLabel->font();
+    m_titleLabel = new QLabel(title, panel);
+    QFont titleFont = m_titleLabel->font();
     titleFont.setBold(true);
     titleFont.setPointSize(titleFont.pointSize() + 4);
-    titleLabel->setFont(titleFont);
-    titleLabel->setWordWrap(true);
+    m_titleLabel->setFont(titleFont);
+    m_titleLabel->setWordWrap(true);
 
-    auto *pathLabel = new QLabel(filePath, panel);
-    pathLabel->setWordWrap(true);
-    pathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    m_pathLabel = new QLabel(filePath, panel);
+    m_pathLabel->setWordWrap(true);
+    m_pathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
-    QPalette pathPalette = pathLabel->palette();
+    QPalette pathPalette = m_pathLabel->palette();
     pathPalette.setColor(QPalette::WindowText, pathPalette.color(QPalette::WindowText).lighter(130));
-    pathLabel->setPalette(pathPalette);
+    m_pathLabel->setPalette(pathPalette);
 
-    auto *messageLabel = new QLabel(message, panel);
-    messageLabel->setWordWrap(true);
+    m_messageLabel = new QLabel(message, panel);
+    m_messageLabel->setWordWrap(true);
 
-    panelLayout->addWidget(titleLabel);
-    panelLayout->addWidget(pathLabel);
-    panelLayout->addWidget(messageLabel);
+    panelLayout->addWidget(m_titleLabel);
+    panelLayout->addWidget(m_pathLabel);
+    panelLayout->addWidget(m_messageLabel);
 
     layout->addStretch();
     layout->addWidget(panel, 0, Qt::AlignCenter);
     layout->addStretch();
+    refreshLabels();
 }
 
 QString EditorPlaceholderWidget::title() const
@@ -70,9 +72,43 @@ QString EditorPlaceholderWidget::message() const
     return m_message;
 }
 
+void EditorPlaceholderWidget::setTitle(const QString &title)
+{
+    m_title = title;
+    refreshLabels();
+}
+
 void EditorPlaceholderWidget::setFilePath(const QString &filePath)
 {
     m_filePath = filePath;
+    refreshLabels();
+}
+
+void EditorPlaceholderWidget::setMessage(const QString &message)
+{
+    m_message = message;
+    refreshLabels();
+}
+
+void EditorPlaceholderWidget::changeEvent(QEvent *event)
+{
+    if (event != nullptr && event->type() == QEvent::LanguageChange) {
+        refreshLabels();
+    }
+    QWidget::changeEvent(event);
+}
+
+void EditorPlaceholderWidget::refreshLabels()
+{
+    if (m_titleLabel != nullptr) {
+        m_titleLabel->setText(m_title);
+    }
+    if (m_pathLabel != nullptr) {
+        m_pathLabel->setText(m_filePath);
+    }
+    if (m_messageLabel != nullptr) {
+        m_messageLabel->setText(m_message);
+    }
 }
 
 } // namespace pyraqt::ui
