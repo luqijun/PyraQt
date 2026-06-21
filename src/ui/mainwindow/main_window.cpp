@@ -17,6 +17,7 @@
 #include "core/update/update_types.h"
 #include "core/workspace/workspace_manager.h"
 #include "ui/dialogs/command_palette_dialog.h"
+#include "ui/dialogs/python_tools_dialog.h"
 #include "ui/dialogs/settings_dialog.h"
 #include "ui/common/file_dialog_utils.h"
 #include "ui/editor/editor_workspace_widget.h"
@@ -25,6 +26,7 @@
 #include "ui/panels/files/file_browser_panel.h"
 #include "ui/panels/properties/model_properties_panel.h"
 #include "ui/panels/plugins/plugin_manager_panel.h"
+#include "ui/panels/python/python_console_widget.h"
 
 #include <QAction>
 #include <QCloseEvent>
@@ -184,7 +186,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::createCentralEditor()
 {
-    m_workspaceWidget = new EditorWorkspaceWidget(m_themeManager, m_modelImportManager, this);
+    m_workspaceWidget = new EditorWorkspaceWidget(m_themeManager, m_modelImportManager, &m_pythonRuntimeManager, this);
     m_workspaceWidget->setObjectName(QStringLiteral("editorWorkspace"));
     setCentralWidget(m_workspaceWidget);
 
@@ -294,11 +296,9 @@ void MainWindow::createDocks()
     propertiesDock->setWidget(m_modelPropertiesPanel);
     addDockWidget(Qt::RightDockWidgetArea, propertiesDock);
 
-    auto *consoleDock = new QDockWidget(tr("Console"), this);
+    auto *consoleDock = new QDockWidget(tr("Python Console"), this);
     consoleDock->setObjectName(QStringLiteral("consoleDock"));
-    m_console = new QPlainTextEdit(consoleDock);
-    m_console->setReadOnly(true);
-    m_console->setPlainText(tr("Application console output will appear here."));
+    m_console = new PythonConsoleWidget(m_pythonRuntimeManager, m_scriptExecutionManager, consoleDock);
     consoleDock->setWidget(m_console);
     addDockWidget(Qt::BottomDockWidgetArea, consoleDock);
 
@@ -333,6 +333,7 @@ void MainWindow::createMenus()
     auto *toolsMenu = menuBar()->addMenu(QString());
     toolsMenu->setObjectName(QStringLiteral("toolsMenu"));
     toolsMenu->addAction(m_commandPaletteAction);
+    toolsMenu->addAction(m_pythonToolsAction);
     toolsMenu->addAction(m_settingsAction);
     toolsMenu->addAction(m_chooseFileBrowserRootAction);
     toolsMenu->addAction(m_checkUpdatesAction);
@@ -427,6 +428,7 @@ void MainWindow::createScriptActions()
     m_closeOtherTabsAction = new QAction(this);
     m_reopenSessionAction = new QAction(this);
     m_settingsAction = new QAction(this);
+    m_pythonToolsAction = new QAction(this);
     m_chooseFileBrowserRootAction = new QAction(this);
     m_commandPaletteAction = new QAction(this);
     m_checkUpdatesAction = new QAction(this);
@@ -497,6 +499,7 @@ void MainWindow::createScriptActions()
     connect(m_closeOtherTabsAction, &QAction::triggered, m_workspaceWidget, &EditorWorkspaceWidget::closeOtherEditors);
     connect(m_reopenSessionAction, &QAction::triggered, this, &MainWindow::reopenLastSession);
     connect(m_settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
+    connect(m_pythonToolsAction, &QAction::triggered, this, &MainWindow::openPythonTools);
     connect(m_chooseFileBrowserRootAction, &QAction::triggered, this, &MainWindow::chooseFileBrowserRoot);
     connect(m_commandPaletteAction, &QAction::triggered, this, &MainWindow::openCommandPalette);
     connect(m_checkUpdatesAction, &QAction::triggered, this, &MainWindow::checkForUpdates);
@@ -799,6 +802,12 @@ void MainWindow::openSettings()
     }
 }
 
+void MainWindow::openPythonTools()
+{
+    PythonToolsDialog dialog(m_pythonRuntimeManager, m_scriptExecutionManager, this);
+    dialog.exec();
+}
+
 void MainWindow::reopenLastSession()
 {
     if (m_workspaceWidget == nullptr) {
@@ -932,7 +941,7 @@ void MainWindow::appendConsoleLine(const QString &prefix, const QString &message
     if (m_console == nullptr || message.isEmpty()) {
         return;
     }
-    m_console->appendPlainText(QStringLiteral("[%1] %2").arg(prefix, message));
+    m_console->appendOutput(prefix, message);
 }
 
 void MainWindow::restoreSession()
@@ -1036,6 +1045,9 @@ void MainWindow::retranslateUi()
     }
     if (m_settingsAction != nullptr) {
         m_settingsAction->setText(tr("Settings"));
+    }
+    if (m_pythonToolsAction != nullptr) {
+        m_pythonToolsAction->setText(tr("Python Tools"));
     }
     if (m_chooseFileBrowserRootAction != nullptr) {
         m_chooseFileBrowserRootAction->setText(tr("Set File Browser Root"));

@@ -2,6 +2,7 @@
 
 #include "core/plugin/plugin_types.h"
 
+#include <QFileInfo>
 #include <QObject>
 #include <QVector>
 
@@ -15,6 +16,7 @@ class IPlugin;
 class LogManager;
 class PluginContext;
 class ScriptExecutionManager;
+class PythonRuntimeManager;
 
 class PluginManager final : public QObject {
     Q_OBJECT
@@ -25,12 +27,14 @@ public:
         ConfigManager &configManager,
         LogManager &logManager,
         ScriptExecutionManager &scriptExecutionManager,
+        PythonRuntimeManager &pythonRuntimeManager,
         QObject *parent = nullptr);
     ~PluginManager() override;
 
     void scanPlugins();
     void loadEnabledPlugins();
     bool setPluginEnabled(const QString &id, bool enabled);
+    bool reloadPlugin(const QString &id);
     [[nodiscard]] QVector<PluginInfo> plugins() const;
     [[nodiscard]] QStringList lastErrors() const;
 
@@ -43,7 +47,9 @@ private:
     void scanPythonPlugins();
     void loadCppPlugin(const PluginInfo &pluginInfo);
     void loadPythonPlugin(const PluginInfo &pluginInfo);
+    void unloadPythonPlugin(const PluginInfo &pluginInfo);
     void registerPythonPluginCommands(const PluginInfo &pluginInfo);
+    [[nodiscard]] PluginInfo readPythonPluginInfo(const QFileInfo &entry) const;
     [[nodiscard]] bool isPluginEnabled(const QString &id, bool enabledByDefault = true) const;
     void persistDisabledPlugins();
     [[nodiscard]] QStringList pluginSearchPaths() const;
@@ -53,6 +59,7 @@ private:
     ConfigManager &m_configManager;
     LogManager &m_logManager;
     ScriptExecutionManager &m_scriptExecutionManager;
+    PythonRuntimeManager &m_pythonRuntimeManager;
     PluginContext *m_pluginContext = nullptr;
     QVector<PluginInfo> m_plugins;
     QStringList m_errors;

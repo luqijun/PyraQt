@@ -2,6 +2,7 @@
 
 #include "core/modeling/model_import_manager.h"
 #include "core/modeling/model_types.h"
+#include "core/scripting/python_runtime_manager.h"
 #include "core/theme/theme_manager.h"
 #include "ui/editor/model_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
@@ -15,10 +16,12 @@ namespace pyraqt::ui {
 EditorWorkspaceWidget::EditorWorkspaceWidget(
     core::ThemeManager &themeManager,
     core::ModelImportManager &modelImportManager,
+    core::PythonRuntimeManager *pythonRuntimeManager,
     QWidget *parent)
     : QWidget(parent)
     , m_themeManager(themeManager)
     , m_modelImportManager(modelImportManager)
+    , m_pythonRuntimeManager(pythonRuntimeManager)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -265,7 +268,7 @@ void EditorWorkspaceWidget::restoreSession(const core::WorkspaceSession &session
 
 ScriptEditorWidget *EditorWorkspaceWidget::createEditor()
 {
-    auto *editor = new ScriptEditorWidget(this);
+    auto *editor = new ScriptEditorWidget(m_pythonRuntimeManager, this);
     editor->applyTheme(m_themeManager.currentTheme());
     connectEditor(editor);
     return editor;

@@ -6,9 +6,14 @@ class QLabel;
 class QTextEdit;
 
 #if PYRAQT_HAS_QSCINTILLA
+class QsciAPIs;
 class QsciLexerPython;
 class QsciScintilla;
 #endif
+
+namespace pyraqt::core {
+class PythonRuntimeManager;
+}
 
 namespace pyraqt::ui {
 
@@ -16,7 +21,8 @@ class ScriptEditorWidget final : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ScriptEditorWidget(QWidget *parent = nullptr);
+    explicit ScriptEditorWidget(core::PythonRuntimeManager *runtimeManager = nullptr, QWidget *parent = nullptr);
+    ~ScriptEditorWidget() override;
 
     [[nodiscard]] bool isAvailable() const;
     [[nodiscard]] QString currentFilePath() const;
@@ -26,6 +32,14 @@ public:
     [[nodiscard]] int currentLine() const;
     [[nodiscard]] int currentColumn() const;
     [[nodiscard]] QString appliedTheme() const;
+    [[nodiscard]] bool codeCompletionEnabled() const;
+    [[nodiscard]] bool dotCompletionEnabled() const;
+    [[nodiscard]] QStringList completionWords() const;
+    [[nodiscard]] QStringList lastMemberCompletionWordsForTesting() const;
+    void setTextForTesting(const QString &text);
+    void triggerDotCompletionForTesting();
+    void typeMemberTextForTesting(const QString &text);
+    void refreshMemberCompletionForTesting();
 
     void newDocument();
     bool loadFromFile(const QString &filePath);
@@ -40,17 +54,31 @@ signals:
     void cursorPositionChanged(int line, int column);
 
 private:
+    void configureCodeCompletion();
+    [[nodiscard]] QStringList editorMemberCompletions() const;
+    [[nodiscard]] QString contextCodeBeforeCursor(int prefixLength) const;
+    void insertTextAtCursor(const QString &text);
+    void insertDotAndShowMemberCompletion();
+    void showDotMemberCompletion();
     void setModified(bool modified);
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 #if PYRAQT_HAS_QSCINTILLA
     QsciScintilla *m_editor = nullptr;
     QsciLexerPython *m_lexer = nullptr;
+    QsciAPIs *m_apis = nullptr;
 #else
     QTextEdit *m_editor = nullptr;
     QLabel *m_placeholder = nullptr;
 #endif
     QString m_currentFilePath;
+    core::PythonRuntimeManager *m_runtimeManager = nullptr;
     QString m_appliedTheme = QStringLiteral("light");
+    QStringList m_completionWords;
+    QStringList m_editorMemberWords;
+    QStringList m_lastMemberCompletionWords;
+    bool m_codeCompletionEnabled = false;
+    bool m_dotCompletionEnabled = false;
     bool m_modified = false;
 };
 

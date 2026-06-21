@@ -1,21 +1,29 @@
 #include "ui/editor/script_editor_widget.h"
 
+#include "core/scripting/python_completion_provider.h"
+#include "core/scripting/python_runtime_manager.h"
+
 #include <QColor>
+#include <QEvent>
 #include <QFile>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QPalette>
 #include <QTextEdit>
 #include <QVBoxLayout>
 
 #if PYRAQT_HAS_QSCINTILLA
+#include <Qsci/qsciapis.h>
+#include <Qsci/qsciscintillabase.h>
 #include <Qsci/qscilexerpython.h>
 #include <Qsci/qsciscintilla.h>
 #endif
 
 namespace pyraqt::ui {
 
-ScriptEditorWidget::ScriptEditorWidget(QWidget *parent)
+ScriptEditorWidget::ScriptEditorWidget(core::PythonRuntimeManager *runtimeManager, QWidget *parent)
     : QWidget(parent)
+    , m_runtimeManager(runtimeManager)
 {
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -32,12 +40,31 @@ ScriptEditorWidget::ScriptEditorWidget(QWidget *parent)
     m_editor->setBraceMatching(QsciScintilla::StrictBraceMatch);
     m_editor->setCaretLineVisible(true);
     m_editor->setCaretLineBackgroundColor(QColor(QStringLiteral("#bccbee")));
+    m_editor->installEventFilter(this);
+    configureCodeCompletion();
     m_editor->setText(QStringLiteral("# PyraQt script\nimport pyra\n\npyra.log.info('Ready to script')\n"));
     connect(m_editor, &QsciScintilla::textChanged, this, [this] {
         setModified(true);
     });
     connect(m_editor, &QsciScintilla::cursorPositionChanged, this, [this](int line, int column) {
         emit cursorPositionChanged(line + 1, column + 1);
+    });
+    connect(m_editor, &QsciScintilla::userListActivated, this, [this](int id, const QString &text) {
+        if (id == 1 && m_editor != nullptr) {
+            int line = 0;
+            int column = 0;
+            m_editor->getCursorPosition(&line, &column);
+            const QString prefix = core::PythonCompletionProvider::prefixBeforeCursor(
+                m_editor->text(),
+                m_editor->positionFromLineIndex(line, column));
+            const QString memberPrefix = core::PythonCompletionProvider::memberNamePrefixForDottedPrefix(prefix);
+            if (!memberPrefix.isEmpty()) {
+                m_editor->setSelection(line, column - memberPrefix.length(), line, column);
+                m_editor->replaceSelectedText(text);
+            } else {
+                m_editor->insert(text);
+            }
+        }
     });
     layout->addWidget(m_editor);
 #else
@@ -48,6 +75,14 @@ ScriptEditorWidget::ScriptEditorWidget(QWidget *parent)
 #endif
 
     applyTheme(m_appliedTheme);
+}
+
+ScriptEditorWidget::~ScriptEditorWidget()
+{
+#if PYRAQT_HAS_QSCINTILLA
+    delete m_apis;
+    m_apis = nullptr;
+#endif
 }
 
 bool ScriptEditorWidget::isAvailable() const
@@ -115,6 +150,67 @@ int ScriptEditorWidget::currentColumn() const
 QString ScriptEditorWidget::appliedTheme() const
 {
     return m_appliedTheme;
+}
+
+bool ScriptEditorWidget::codeCompletionEnabled() const
+{
+    return m_codeCompletionEnabled;
+}
+
+bool ScriptEditorWidget::dotCompletionEnabled() const
+{
+    return m_dotCompletionEnabled;
+}
+
+QStringList ScriptEditorWidget::completionWords() const
+{
+    return m_completionWords;
+}
+
+QStringList ScriptEditorWidget::lastMemberCompletionWordsForTesting() const
+{
+    return m_lastMemberCompletionWords;
+}
+
+void ScriptEditorWidget::setTextForTesting(const QString &text)
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor != nullptr) {
+        m_editor->setText(text);
+        const QStringList lines = text.split(QLatin1Char('\n'));
+        const int line = qMax(0, lines.size() - 1);
+        const int column = lines.isEmpty() ? 0 : lines.last().size();
+        m_editor->setCursorPosition(line, column);
+    }
+#else
+    Q_UNUSED(text)
+#endif
+}
+
+void ScriptEditorWidget::triggerDotCompletionForTesting()
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor != nullptr) {
+        insertDotAndShowMemberCompletion();
+    }
+#endif
+}
+
+void ScriptEditorWidget::typeMemberTextForTesting(const QString &text)
+{
+#if PYRAQT_HAS_QSCINTILLA
+    for (const QChar ch : text) {
+        insertTextAtCursor(QString(ch));
+        showDotMemberCompletion();
+    }
+#else
+    Q_UNUSED(text)
+#endif
+}
+
+void ScriptEditorWidget::refreshMemberCompletionForTesting()
+{
+    showDotMemberCompletion();
 }
 
 void ScriptEditorWidget::newDocument()
@@ -222,6 +318,134 @@ void ScriptEditorWidget::applyTheme(const QString &themeName)
 #endif
 }
 
+void ScriptEditorWidget::configureCodeCompletion()
+{
+    pyraqt::core::PythonCompletionProvider provider;
+    m_completionWords = provider.staticCompletions();
+    m_editorMemberWords = provider.commonMemberNames();
+
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_lexer == nullptr || m_editor == nullptr) {
+        return;
+    }
+    m_apis = new QsciAPIs(m_lexer);
+    for (const QString &word : m_completionWords) {
+        m_apis->add(word);
+    }
+    m_apis->prepare();
+    m_editor->setAutoCompletionSource(QsciScintilla::AcsAll);
+    m_editor->setAutoCompletionThreshold(2);
+    m_editor->setAutoCompletionCaseSensitivity(false);
+    m_editor->setAutoCompletionReplaceWord(false);
+    m_editor->setCallTipsStyle(QsciScintilla::CallTipsContext);
+    m_codeCompletionEnabled = true;
+    m_dotCompletionEnabled = true;
+#else
+    m_codeCompletionEnabled = false;
+    m_dotCompletionEnabled = false;
+#endif
+}
+
+QStringList ScriptEditorWidget::editorMemberCompletions() const
+{
+    QStringList words;
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor != nullptr) {
+        int line = 0;
+        int column = 0;
+        m_editor->getCursorPosition(&line, &column);
+        const QString text = m_editor->text();
+        const int cursor = m_editor->positionFromLineIndex(line, column);
+        const QString prefix = core::PythonCompletionProvider::prefixBeforeCursor(text, cursor);
+        const QString objectExpression = core::PythonCompletionProvider::objectExpressionForDottedPrefix(prefix);
+        if (!objectExpression.isEmpty()) {
+            if (m_runtimeManager != nullptr) {
+                words = m_runtimeManager->completeMembers(objectExpression, contextCodeBeforeCursor(prefix.length()));
+            }
+            if (words.isEmpty()) {
+                words = core::PythonCompletionProvider::directMembersForObject(m_completionWords, objectExpression);
+            }
+            const QString memberPrefix = core::PythonCompletionProvider::memberNamePrefixForDottedPrefix(prefix);
+            if (!memberPrefix.isEmpty()) {
+                QStringList filtered;
+                for (const QString &word : words) {
+                    if (word.startsWith(memberPrefix, Qt::CaseInsensitive)) {
+                        filtered.push_back(word);
+                    }
+                }
+                words = filtered;
+            }
+        }
+    }
+#endif
+    if (words.isEmpty()) {
+        words = m_editorMemberWords;
+    }
+    words.removeDuplicates();
+    words.sort(Qt::CaseInsensitive);
+    return words;
+}
+
+QString ScriptEditorWidget::contextCodeBeforeCursor(int prefixLength) const
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor != nullptr) {
+        int line = 0;
+        int column = 0;
+        m_editor->getCursorPosition(&line, &column);
+        const int cursor = m_editor->positionFromLineIndex(line, column);
+        return m_editor->text().left(qMax(0, cursor - prefixLength));
+    }
+#endif
+    return {};
+}
+
+void ScriptEditorWidget::showDotMemberCompletion()
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor == nullptr) {
+        return;
+    }
+    const QStringList words = editorMemberCompletions();
+    m_lastMemberCompletionWords = words;
+    if (!words.isEmpty()) {
+        m_editor->showUserList(1, words);
+    }
+#endif
+}
+
+void ScriptEditorWidget::insertDotAndShowMemberCompletion()
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor == nullptr) {
+        return;
+    }
+    insertTextAtCursor(QStringLiteral("."));
+    showDotMemberCompletion();
+#endif
+}
+
+void ScriptEditorWidget::insertTextAtCursor(const QString &text)
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (m_editor == nullptr || text.isEmpty()) {
+        return;
+    }
+    int line = 0;
+    int column = 0;
+    m_editor->getCursorPosition(&line, &column);
+    m_editor->insertAt(text, line, column);
+    const QStringList lines = text.split(QLatin1Char('\n'));
+    if (lines.size() == 1) {
+        m_editor->setCursorPosition(line, column + text.size());
+    } else {
+        m_editor->setCursorPosition(line + lines.size() - 1, lines.last().size());
+    }
+#else
+    Q_UNUSED(text)
+#endif
+}
+
 void ScriptEditorWidget::setModified(bool modified)
 {
     if (m_modified == modified) {
@@ -229,6 +453,46 @@ void ScriptEditorWidget::setModified(bool modified)
     }
     m_modified = modified;
     emit modificationChanged(modified);
+}
+
+bool ScriptEditorWidget::eventFilter(QObject *watched, QEvent *event)
+{
+#if PYRAQT_HAS_QSCINTILLA
+    if (watched == m_editor && event->type() == QEvent::KeyPress) {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        if (keyEvent->key() == Qt::Key_Tab && m_editor->isListActive()) {
+            m_editor->SendScintilla(QsciScintillaBase::SCI_TAB);
+            return true;
+        }
+        if (m_dotCompletionEnabled && keyEvent->key() == Qt::Key_Period && keyEvent->text() == QStringLiteral(".")) {
+            if (m_editor->isListActive()) {
+                m_editor->cancelList();
+            }
+            insertDotAndShowMemberCompletion();
+            return true;
+        }
+        if (m_dotCompletionEnabled && !keyEvent->text().isEmpty()) {
+            const QChar typed = keyEvent->text().at(0);
+            if (typed.isLetterOrNumber() || typed == QLatin1Char('_')) {
+                const QString before = core::PythonCompletionProvider::prefixBeforeCursor(
+                    m_editor->text(),
+                    m_editor->positionFromLineIndex(currentLine() - 1, currentColumn() - 1));
+                if (before.contains(QLatin1Char('.'))) {
+                    if (m_editor->isListActive()) {
+                        m_editor->cancelList();
+                    }
+                    insertTextAtCursor(keyEvent->text());
+                    showDotMemberCompletion();
+                    return true;
+                }
+            }
+        }
+    }
+#else
+    Q_UNUSED(watched)
+    Q_UNUSED(event)
+#endif
+    return QWidget::eventFilter(watched, event);
 }
 
 } // namespace pyraqt::ui

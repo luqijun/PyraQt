@@ -57,6 +57,12 @@ private:
     QCheckBox *m_restoreSessionCheck = nullptr;
     QLineEdit *m_interpreterEdit = nullptr;
     QSpinBox *m_timeoutSpin = nullptr;
+    QCheckBox *m_macrosEnabledCheck = nullptr;
+    QCheckBox *m_filesystemAccessCheck = nullptr;
+    QCheckBox *m_isolatedExecutionCheck = nullptr;
+    QSpinBox *m_consoleHistorySpin = nullptr;
+    QCheckBox *m_codeCompletionCheck = nullptr;
+    QSpinBox *m_completionThresholdSpin = nullptr;
     QCheckBox *m_autoUpdateCheck = nullptr;
     QComboBox *m_updateChannelCombo = nullptr;
 };

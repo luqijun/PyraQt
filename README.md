@@ -13,9 +13,14 @@ PyraQt 是一个面向专业开发者的现代 Qt 桌面应用模板框架。当
 - 本地文件浏览器面板
 - 应用级设置对话框
 - 可选 OCCT 3D 模型浏览器（`.stp/.step/.brep`）
-- Python 子进程执行与停止
-- 最小 `pyra` API：`app`、`ui`、`fs`、`log`
-- C++ 动态插件与 Python 命令插件
+- QGIS 风格主进程内嵌 CPython 运行时、共享全局命名空间和统一 Runner
+- 可选 Python 子进程隔离执行与停止
+- 内嵌 `pyra` / `iface` API：`app`、`ui`、`fs`、`log`、`commands`、`workspace`、`model`、`plugins`、`processing`、`macros`、`expressions`
+- C++ 动态插件与 QGIS 风格 `classFactory(iface)` Python 插件
+- 交互式 Python Console、stdout/stderr 回流、命令历史和多行执行区
+- Python Tools 对话框，用于加载/触发宏、注册/执行表达式函数和 Processing 风格算法
+- Python 脚本编辑器与 Console 代码提示，覆盖 Python 关键字、`pyra`/`iface` API 和运行时 globals
+- Python 宏、表达式函数和 Processing 风格算法入口
 - Command Palette 与插件管理器
 - CPack 发布打包：Linux `DEB`、`TGZ`、`ZIP`
 - 自动更新检查占位动作与配置
@@ -35,6 +40,7 @@ PyraQt 是一个面向专业开发者的现代 Qt 桌面应用模板框架。当
 - Qt 5.15+ 或 Qt 6.5+
 - C++17 编译器
 - Qt5 完整脚本编辑体验需要 QScintilla 开发库
+- 嵌入式 Python 需要 Python3 Development 组件
 - 如果需要 STEP/BREP 导入与 3D 浏览功能，需本机预装 OCCT 开发库
 
 ### 本地构建
@@ -53,6 +59,10 @@ ctest --preset linux-debug-qt-auto
 
 示例脚本位于 [scripts](/home/numbat/Projects/Misc/PyraQt/scripts)。
 Python 插件示例位于 [plugins](/home/numbat/Projects/Misc/PyraQt/plugins)。
+Python 插件推荐实现 `classFactory(iface)`，返回带 `initGui()` / `unload()` 的插件对象；旧的 `plugin.json` 命令式插件继续兼容。
+Console 中可直接使用 `pyra.macros`、`pyra.expressions` 和 `pyra.processing` 注册并调用 PyraQt 领域的宏、表达式函数和 Processing 风格算法，也可以通过全局 `iface` 访问同等入口。
+菜单 `Tools > Python Tools` 提供同等图形入口；Python Console 的 `Inspect` 按钮可查看当前共享解释器全局对象。
+脚本编辑器和 Python Console 默认启用代码提示；可在 Settings 的 Python 页面调整启用状态和触发字符数。
 
 如果需要强制选择 Qt 版本：
 

@@ -32,7 +32,6 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Threads REQUIRED)
 find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
-
 if(PYRAQT_ENABLE_SPDLOG)
     find_package(spdlog QUIET)
 endif()
@@ -86,12 +85,19 @@ add_library(pyraqt_core STATIC
     src/core/runtime/crash_recovery_manager.h
     src/core/scripting/pyra_api_bridge.cpp
     src/core/scripting/pyra_api_bridge.h
+    src/core/scripting/python_completion_provider.cpp
+    src/core/scripting/python_completion_provider.h
+    src/core/scripting/python_feature_manager.cpp
+    src/core/scripting/python_feature_manager.h
+    src/core/scripting/python_runner.cpp
+    src/core/scripting/python_runner.h
     src/core/scripting/python_runtime_manager.cpp
     src/core/scripting/python_runtime_manager.h
     src/core/scripting/script_execution_manager.cpp
     src/core/scripting/script_execution_manager.h
     src/core/scripting/script_process_runner.cpp
     src/core/scripting/script_process_runner.h
+    src/core/scripting/script_result.h
     src/core/scripting/script_session.h
     src/core/theme/theme_manager.cpp
     src/core/theme/theme_manager.h
@@ -136,10 +142,16 @@ add_executable(pyraqt
     src/app/main.cpp
     src/ui/common/file_dialog_utils.cpp
     src/ui/common/file_dialog_utils.h
+    src/ui/common/python_completion_line_edit.cpp
+    src/ui/common/python_completion_line_edit.h
+    src/ui/common/python_completion_text_edit.cpp
+    src/ui/common/python_completion_text_edit.h
     src/ui/dialogs/command_palette_dialog.cpp
     src/ui/dialogs/command_palette_dialog.h
     src/ui/dialogs/settings_dialog.cpp
     src/ui/dialogs/settings_dialog.h
+    src/ui/dialogs/python_tools_dialog.cpp
+    src/ui/dialogs/python_tools_dialog.h
     src/ui/editor/editor_workspace_widget.cpp
     src/ui/editor/editor_workspace_widget.h
     src/ui/editor/model_document_widget.cpp
@@ -160,6 +172,8 @@ add_executable(pyraqt
     src/ui/panels/files/file_browser_panel.h
     src/ui/panels/plugins/plugin_manager_panel.cpp
     src/ui/panels/plugins/plugin_manager_panel.h
+    src/ui/panels/python/python_console_widget.cpp
+    src/ui/panels/python/python_console_widget.h
     ${PYRAQT_RESOURCE_SOURCES}
     ${PYRAQT_TRANSLATION_SOURCES}
 )

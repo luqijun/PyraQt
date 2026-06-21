@@ -1,10 +1,21 @@
 #include "core/theme/theme_manager.h"
 #include "core/modeling/model_import_manager.h"
+#include "core/config/config_manager.h"
+#include "core/logging/log_manager.h"
+#include "core/scripting/pyra_api_bridge.h"
+#include "core/scripting/python_completion_provider.h"
+#include "core/scripting/python_runner.h"
+#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/script_execution_manager.h"
 #include "ui/common/file_dialog_utils.h"
+#include "ui/common/python_completion_line_edit.h"
+#include "ui/common/python_completion_text_edit.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
+#include "ui/panels/python/python_console_widget.h"
 
 #include <QApplication>
+#include <QLineEdit>
 #include <QSignalSpy>
 #include <QTest>
 #include <memory>
@@ -17,6 +28,12 @@ class UiThemeTest final : public QObject {
 private slots:
     void themeManagerEmitsThemeChanged();
     void editorAppliesThemeAndTracksChanges();
+    void pythonCompletionProviderIncludesPyraApi();
+    void pythonCompletionProviderParsesDottedPrefixes();
+    void editorConfiguresCodeCompletion();
+    void consoleLineEditTriggersDottedCompletion();
+    void consoleEditorTriggersDottedCompletion();
+    void consoleConfiguresCodeCompletionAndRuntimeGlobals();
     void themedFileDialogUsesQtDialogSettings();
 };
 
@@ -55,6 +72,179 @@ void UiThemeTest::editorAppliesThemeAndTracksChanges()
 
     QVERIFY(themeManager.setLightTheme());
     QCOMPARE(editor->appliedTheme(), QStringLiteral("light"));
+}
+
+void UiThemeTest::pythonCompletionProviderIncludesPyraApi()
+{
+    pyraqt::core::PythonCompletionProvider provider;
+    const QStringList completions = provider.staticCompletions();
+    QVERIFY(completions.contains(QStringLiteral("print")));
+    QVERIFY(completions.contains(QStringLiteral("pyra.ui.set_status")));
+    QVERIFY(completions.contains(QStringLiteral("pyra.processing.run")));
+    QVERIFY(completions.contains(QStringLiteral("iface.setStatus")));
+}
+
+void UiThemeTest::pythonCompletionProviderParsesDottedPrefixes()
+{
+    QCOMPARE(pyraqt::core::PythonCompletionProvider::prefixBeforeCursor(QStringLiteral("pyra."), 5), QStringLiteral("pyra."));
+    QCOMPARE(pyraqt::core::PythonCompletionProvider::prefixBeforeCursor(QStringLiteral("pyra.ui."), 8), QStringLiteral("pyra.ui."));
+    QCOMPARE(pyraqt::core::PythonCompletionProvider::prefixBeforeCursor(QStringLiteral("iface."), 6), QStringLiteral("iface."));
+    QCOMPARE(
+        pyraqt::core::PythonCompletionProvider::prefixBeforeCursor(QStringLiteral("print(pyra.ui."), 14),
+        QStringLiteral("pyra.ui."));
+    QCOMPARE(
+        pyraqt::core::PythonCompletionProvider::objectExpressionForMemberPrefix(QStringLiteral("custom_symbol.")),
+        QStringLiteral("custom_symbol"));
+    QVERIFY(pyraqt::core::PythonCompletionProvider::prefixedMemberCompletions(
+                QStringLiteral("custom_symbol"),
+                {QStringLiteral("append")})
+                .contains(QStringLiteral("custom_symbol.append")));
+    const QStringList pyraUiMembers = pyraqt::core::PythonCompletionProvider::directMembersForObject(
+        pyraqt::core::PythonCompletionProvider().staticCompletions(),
+        QStringLiteral("pyra.ui"));
+    QVERIFY(pyraUiMembers.contains(QStringLiteral("set_status")));
+    QVERIFY(!pyraUiMembers.contains(QStringLiteral("append")));
+}
+
+void UiThemeTest::editorConfiguresCodeCompletion()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::ui::ScriptEditorWidget editor(&runtimeManager);
+#if PYRAQT_HAS_QSCINTILLA
+    QVERIFY(editor.codeCompletionEnabled());
+    QVERIFY(editor.dotCompletionEnabled());
+    QVERIFY(editor.completionWords().contains(QStringLiteral("pyra.ui.set_status")));
+    QVERIFY(editor.completionWords().contains(QStringLiteral("iface.setStatus")));
+    QVERIFY(runtimeManager.runString(QStringLiteral("custom_list = []")).success);
+    QVERIFY(runtimeManager.completeMembers(QStringLiteral("custom_list"), QStringLiteral("custom_list = []\n"))
+                .contains(QStringLiteral("append")));
+    QVERIFY(runtimeManager.completeMembers(QStringLiteral("pyra.ui"), QStringLiteral("import pyra\n"))
+                .contains(QStringLiteral("set_status")));
+    QVERIFY(runtimeManager.completeMembers(QStringLiteral("sys"), QStringLiteral("import sys\n"))
+                .contains(QStringLiteral("path")));
+    editor.setTextForTesting(QStringLiteral("import sys\nsys"));
+    editor.triggerDotCompletionForTesting();
+    QVERIFY(editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("path")));
+    editor.typeMemberTextForTesting(QStringLiteral("pa"));
+    QVERIFY(editor.currentText().contains(QStringLiteral("sys.pa")));
+    QVERIFY(editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("path")));
+    QVERIFY(!editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("pass")));
+    editor.setTextForTesting(QStringLiteral("import sys\nsys.p"));
+    editor.refreshMemberCompletionForTesting();
+    QVERIFY(editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("path")));
+    QVERIFY(!editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("pass")));
+    editor.setTextForTesting(QStringLiteral("import sys\nsys.pa"));
+    editor.refreshMemberCompletionForTesting();
+    QVERIFY(editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("path")));
+    QVERIFY(!editor.lastMemberCompletionWordsForTesting().contains(QStringLiteral("pass")));
+    QVERIFY(pyraqt::core::PythonCompletionProvider::directMembersForObject(
+                editor.completionWords(),
+                QStringLiteral("pyra.ui"))
+                .contains(QStringLiteral("set_status")));
+    QVERIFY(!pyraqt::core::PythonCompletionProvider::directMembersForObject(
+                 editor.completionWords(),
+                 QStringLiteral("pyra.ui"))
+                 .contains(QStringLiteral("append")));
+#else
+    QVERIFY(!editor.codeCompletionEnabled());
+    QVERIFY(!editor.dotCompletionEnabled());
+#endif
+}
+
+void UiThemeTest::consoleLineEditTriggersDottedCompletion()
+{
+    pyraqt::ui::PythonCompletionLineEdit input;
+    input.setCompletionWords({QStringLiteral("custom_list")});
+    input.setMemberCompletionProvider([](const QString &prefix) {
+        return pyraqt::core::PythonCompletionProvider::prefixedMemberCompletions(
+            pyraqt::core::PythonCompletionProvider::objectExpressionForMemberPrefix(prefix),
+            {QStringLiteral("append"), QStringLiteral("clear")});
+    });
+    QTest::keyClicks(&input, QStringLiteral("custom_list."));
+    QCOMPARE(input.completionPrefixForTesting(), QStringLiteral("custom_list."));
+    QVERIFY(input.completionCandidatesForTesting().contains(QStringLiteral("custom_list.append")));
+    QTest::keyClick(&input, Qt::Key_Tab);
+    QCOMPARE(input.text(), QStringLiteral("custom_list.append"));
+}
+
+void UiThemeTest::consoleEditorTriggersDottedCompletion()
+{
+    pyraqt::ui::PythonCompletionTextEdit editor;
+    editor.setCompletionWords({QStringLiteral("pyra.ui"), QStringLiteral("pyra.ui.set_status")});
+    editor.setMemberCompletionProvider([](const QString &prefix, const QString &) {
+        return pyraqt::core::PythonCompletionProvider::prefixedMemberCompletions(
+            pyraqt::core::PythonCompletionProvider::objectExpressionForDottedPrefix(prefix),
+            {QStringLiteral("append"), QStringLiteral("set_status")});
+    });
+    QTest::keyClicks(&editor, QStringLiteral("pyra.ui."));
+    QCOMPARE(editor.completionPrefixForTesting(), QStringLiteral("pyra.ui."));
+    QVERIFY(editor.completionWords().contains(QStringLiteral("pyra.ui.set_status")));
+    QVERIFY(editor.applyCurrentCompletionForTesting());
+    QVERIFY(editor.toPlainText().startsWith(QStringLiteral("pyra.ui.")));
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    const QString objectExpression = pyraqt::core::PythonCompletionProvider::objectExpressionForDottedPrefix(QStringLiteral("os.pat"));
+    QStringList osMembers = runtimeManager.completeMembers(objectExpression, QStringLiteral("import os\n"));
+    QStringList filtered;
+    for (const QString &member : osMembers) {
+        if (member.startsWith(QStringLiteral("pat"), Qt::CaseInsensitive)) {
+            filtered.push_back(member);
+        }
+    }
+    const QStringList osCandidates = pyraqt::core::PythonCompletionProvider::prefixedMemberCompletions(objectExpression, filtered);
+    QVERIFY(osCandidates.contains(QStringLiteral("os.path")));
+    QVERIFY(!osCandidates.contains(QStringLiteral("os.pop")));
+}
+
+void UiThemeTest::consoleConfiguresCodeCompletionAndRuntimeGlobals()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+
+    QVERIFY(runner.runCode(QStringLiteral("custom_symbol = 123\ncustom_list = []")).success);
+    pyraqt::ui::PythonConsoleWidget console(runtimeManager, executionManager);
+    QVERIFY(console.inputCompletionEnabled());
+    QVERIFY(console.editorCompletionEnabled());
+    QVERIFY(console.completionWords().contains(QStringLiteral("pyra.processing.run")));
+    QVERIFY(console.completionWords().contains(QStringLiteral("custom_symbol")));
+
+    auto *input = console.findChild<QLineEdit *>();
+    QVERIFY(input != nullptr);
+    QTest::keyClicks(input, QStringLiteral("pyra."));
+    QTest::qWait(20);
+    QCOMPARE(console.inputCompletionPrefixForTesting(), QStringLiteral("pyra."));
+    input->clear();
+    QTest::keyClicks(input, QStringLiteral("custom_list."));
+    QTest::qWait(20);
+    QCOMPARE(console.inputCompletionPrefixForTesting(), QStringLiteral("custom_list."));
+    QVERIFY(console.inputCompletionCandidatesForTesting().contains(QStringLiteral("custom_list.append")));
+    input->clear();
+    QTest::keyClicks(input, QStringLiteral("unknown_object."));
+    QTest::qWait(20);
+    QCOMPARE(console.inputCompletionPrefixForTesting(), QStringLiteral("unknown_object."));
+    QVERIFY(console.inputCompletionCandidatesForTesting().contains(QStringLiteral("unknown_object.__class__")));
+    const QStringList osPathCandidates = console.memberCompletionsForTesting(QStringLiteral("os.pat"), QStringLiteral("import os\n"));
+    QVERIFY(osPathCandidates.contains(QStringLiteral("os.path")));
+    QVERIFY(!osPathCandidates.contains(QStringLiteral("os.pop")));
+
+    console.submitCommandForTesting(QStringLiteral("repl_value = 123"));
+    QVERIFY(!console.outputTextForTesting().contains(QStringLiteral("[result] 123")));
+    console.submitCommandForTesting(QStringLiteral("repl_value"));
+    QVERIFY(console.outputTextForTesting().contains(QStringLiteral("[result] 123")));
+    console.submitCommandForTesting(QStringLiteral("len([1, 2, 3])"));
+    QVERIFY(console.outputTextForTesting().contains(QStringLiteral("[result] 3")));
+    console.submitCommandForTesting(QStringLiteral("print('hello repl')"));
+    QVERIFY(console.outputTextForTesting().contains(QStringLiteral("[stdout] hello repl")));
+    QVERIFY(!console.outputTextForTesting().contains(QStringLiteral("[result] None")));
+
+    QVERIFY(console.completionWords().contains(QStringLiteral("custom_symbol")));
 }
 
 void UiThemeTest::themedFileDialogUsesQtDialogSettings()

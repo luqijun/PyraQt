@@ -5,6 +5,7 @@
 
 #include <QCheckBox>
 #include <QHeaderView>
+#include <QPushButton>
 #include <QTableWidget>
 #include <QVBoxLayout>
 
@@ -16,13 +17,14 @@ PluginManagerPanel::PluginManagerPanel(pyraqt::core::PluginManager &pluginManage
 {
     auto *layout = new QVBoxLayout(this);
     m_table = new QTableWidget(this);
-    m_table->setColumnCount(6);
+    m_table->setColumnCount(7);
     m_table->setHorizontalHeaderLabels({
         tr("Enabled"),
         tr("Name"),
         tr("Type"),
         tr("Version"),
         tr("Status"),
+        tr("Actions"),
         tr("Description"),
     });
     m_table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
@@ -53,7 +55,13 @@ void PluginManagerPanel::refreshTable()
         m_table->setItem(row, 2, new QTableWidgetItem(plugin.type));
         m_table->setItem(row, 3, new QTableWidgetItem(plugin.version));
         m_table->setItem(row, 4, new QTableWidgetItem(plugin.loaded ? tr("Loaded") : tr("Discovered")));
-        m_table->setItem(row, 5, new QTableWidgetItem(plugin.error.isEmpty() ? plugin.description : plugin.error));
+        auto *reloadButton = new QPushButton(tr("Reload"), m_table);
+        reloadButton->setEnabled(plugin.enabled && plugin.type == QStringLiteral("python"));
+        connect(reloadButton, &QPushButton::clicked, this, [this, plugin] {
+            m_pluginManager.reloadPlugin(plugin.id);
+        });
+        m_table->setCellWidget(row, 5, reloadButton);
+        m_table->setItem(row, 6, new QTableWidgetItem(plugin.error.isEmpty() ? plugin.description : plugin.error));
     }
 }
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/scripting/script_result.h"
 #include "core/scripting/script_session.h"
 
 #include <QObject>
@@ -9,6 +10,7 @@ class QProcess;
 namespace pyraqt::core {
 
 class PyraApiBridge;
+class PythonRunner;
 class PythonRuntimeManager;
 class ScriptProcessRunner;
 
@@ -20,7 +22,10 @@ public:
     ~ScriptExecutionManager() override;
 
     bool runFile(const QString &path, const QStringList &args = {});
+    bool runIsolatedFile(const QString &path, const QStringList &args = {});
+    [[nodiscard]] ScriptResult runCommand(const QString &command);
     bool runSelection(const QString &code, const QString &fileContext = QString());
+    bool runIsolatedSelection(const QString &code, const QString &fileContext = QString());
     void stop();
     [[nodiscard]] bool isRunning() const;
 
@@ -39,6 +44,7 @@ private:
 
     PythonRuntimeManager &m_runtimeManager;
     PyraApiBridge &m_apiBridge;
+    PythonRunner *m_pythonRunner = nullptr;
     ScriptProcessRunner *m_runner = nullptr;
 };
 

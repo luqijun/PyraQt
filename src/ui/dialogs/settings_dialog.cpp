@@ -87,6 +87,12 @@ void SettingsDialog::populateValues()
     m_restoreSessionCheck->setChecked(m_workspaceManager.restoreLastSessionEnabled());
     m_interpreterEdit->setText(m_pythonRuntimeManager.interpreterPath());
     m_timeoutSpin->setValue(m_pythonRuntimeManager.executionTimeoutMs());
+    m_macrosEnabledCheck->setChecked(m_pythonRuntimeManager.macrosEnabled());
+    m_filesystemAccessCheck->setChecked(m_pythonRuntimeManager.fileSystemAccessEnabled());
+    m_isolatedExecutionCheck->setChecked(m_pythonRuntimeManager.useIsolatedExecutionByDefault());
+    m_consoleHistorySpin->setValue(m_pythonRuntimeManager.consoleHistoryLimit());
+    m_codeCompletionCheck->setChecked(m_pythonRuntimeManager.codeCompletionEnabled());
+    m_completionThresholdSpin->setValue(m_pythonRuntimeManager.completionTriggerThreshold());
     m_autoUpdateCheck->setChecked(m_updateManager.autoCheckEnabled());
     m_updateChannelCombo->setCurrentText(m_updateManager.currentChannel());
 }
@@ -174,15 +180,37 @@ QWidget *SettingsDialog::createPythonPage()
     m_timeoutSpin->setRange(1000, 300000);
     m_timeoutSpin->setSingleStep(1000);
     m_timeoutSpin->setSuffix(tr(" ms"));
+    m_consoleHistorySpin = new QSpinBox(page);
+    m_consoleHistorySpin->setRange(10, 5000);
+    m_consoleHistorySpin->setSingleStep(10);
+    m_completionThresholdSpin = new QSpinBox(page);
+    m_completionThresholdSpin->setRange(1, 8);
+    m_completionThresholdSpin->setSingleStep(1);
+    m_codeCompletionCheck = new QCheckBox(tr("Enable Python code completion"), page);
+    m_macrosEnabledCheck = new QCheckBox(tr("Allow project macros to run"), page);
+    m_filesystemAccessCheck = new QCheckBox(tr("Allow Python file system helpers"), page);
+    m_isolatedExecutionCheck = new QCheckBox(tr("Run scripts in isolated subprocess by default"), page);
 
     layout->addRow(tr("Interpreter"), interpreterContainer);
     layout->addRow(tr("Execution Timeout"), m_timeoutSpin);
-    layout->addRow(new QLabel(tr("Interpreter changes apply to the next script run."), page));
+    layout->addRow(tr("Console History"), m_consoleHistorySpin);
+    layout->addRow(tr("Completion Trigger"), m_completionThresholdSpin);
+    layout->addRow(QString(), m_codeCompletionCheck);
+    layout->addRow(QString(), m_macrosEnabledCheck);
+    layout->addRow(QString(), m_filesystemAccessCheck);
+    layout->addRow(QString(), m_isolatedExecutionCheck);
+    layout->addRow(new QLabel(tr("Embedded Python is initialized in-process; isolated mode remains available for long-running scripts."), page));
 
     connect(m_interpreterEdit, &QLineEdit::editingFinished, this, [this] {
         m_pythonRuntimeManager.setInterpreterPath(m_interpreterEdit->text());
     });
     connect(m_timeoutSpin, qOverload<int>(&QSpinBox::valueChanged), &m_pythonRuntimeManager, &core::PythonRuntimeManager::setExecutionTimeoutMs);
+    connect(m_macrosEnabledCheck, &QCheckBox::toggled, &m_pythonRuntimeManager, &core::PythonRuntimeManager::setMacrosEnabled);
+    connect(m_filesystemAccessCheck, &QCheckBox::toggled, &m_pythonRuntimeManager, &core::PythonRuntimeManager::setFileSystemAccessEnabled);
+    connect(m_isolatedExecutionCheck, &QCheckBox::toggled, &m_pythonRuntimeManager, &core::PythonRuntimeManager::setUseIsolatedExecutionByDefault);
+    connect(m_consoleHistorySpin, qOverload<int>(&QSpinBox::valueChanged), &m_pythonRuntimeManager, &core::PythonRuntimeManager::setConsoleHistoryLimit);
+    connect(m_codeCompletionCheck, &QCheckBox::toggled, &m_pythonRuntimeManager, &core::PythonRuntimeManager::setCodeCompletionEnabled);
+    connect(m_completionThresholdSpin, qOverload<int>(&QSpinBox::valueChanged), &m_pythonRuntimeManager, &core::PythonRuntimeManager::setCompletionTriggerThreshold);
     connect(browseButton, &QPushButton::clicked, this, [this] {
         const QString filePath = getThemedOpenFileName(
             {

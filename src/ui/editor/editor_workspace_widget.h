@@ -10,6 +10,7 @@ namespace pyraqt::core {
 class ModelImportManager;
 struct ModelDocument;
 struct ModelSelectionInfo;
+class PythonRuntimeManager;
 class ThemeManager;
 } // namespace pyraqt::core
 
@@ -25,6 +26,7 @@ public:
     explicit EditorWorkspaceWidget(
         core::ThemeManager &themeManager,
         core::ModelImportManager &modelImportManager,
+        core::PythonRuntimeManager *pythonRuntimeManager = nullptr,
         QWidget *parent = nullptr);
 
     ScriptEditorWidget *newDocument();
@@ -74,6 +76,7 @@ private:
 
     core::ThemeManager &m_themeManager;
     core::ModelImportManager &m_modelImportManager;
+    core::PythonRuntimeManager *m_pythonRuntimeManager = nullptr;
     QTabWidget *m_tabWidget = nullptr;
     int m_untitledCounter = 1;
 };

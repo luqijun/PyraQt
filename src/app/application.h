@@ -13,6 +13,8 @@ class LogManager;
 class ModelImportManager;
 class PyraApiBridge;
 class PluginManager;
+class PythonFeatureManager;
+class PythonRunner;
 class PythonRuntimeManager;
 class CrashRecoveryManager;
 class ScriptExecutionManager;
@@ -46,6 +48,8 @@ private:
     std::unique_ptr<core::ThemeManager> m_themeManager;
     std::unique_ptr<core::I18nManager> m_i18nManager;
     std::unique_ptr<core::PythonRuntimeManager> m_pythonRuntimeManager;
+    std::unique_ptr<core::PythonRunner> m_pythonRunner;
+    std::unique_ptr<core::PythonFeatureManager> m_pythonFeatureManager;
     std::unique_ptr<core::PyraApiBridge> m_pyraApiBridge;
     std::unique_ptr<core::ScriptExecutionManager> m_scriptExecutionManager;
     std::unique_ptr<core::CommandManager> m_commandManager;

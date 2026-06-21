@@ -11,6 +11,10 @@ add_executable(pyraqt_core_tests
     unit/test_workspace_services.cpp
     ../src/ui/common/file_dialog_utils.cpp
     ../src/ui/common/file_dialog_utils.h
+    ../src/ui/common/python_completion_line_edit.cpp
+    ../src/ui/common/python_completion_line_edit.h
+    ../src/ui/common/python_completion_text_edit.cpp
+    ../src/ui/common/python_completion_text_edit.h
     ../src/ui/editor/editor_workspace_widget.cpp
     ../src/ui/editor/editor_workspace_widget.h
     ../src/ui/editor/model_document_widget.cpp
@@ -23,6 +27,8 @@ add_executable(pyraqt_core_tests
     ../src/ui/editor/script_editor_widget.h
     ../src/ui/panels/properties/model_properties_panel.cpp
     ../src/ui/panels/properties/model_properties_panel.h
+    ../src/ui/panels/python/python_console_widget.cpp
+    ../src/ui/panels/python/python_console_widget.h
     ../resources/pyraqt_resources.qrc
 )
 

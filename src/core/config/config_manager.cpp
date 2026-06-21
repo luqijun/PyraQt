@@ -100,6 +100,8 @@ QJsonObject ConfigManager::defaults() const
     object.insert(QStringLiteral("locale"), QStringLiteral("zh_CN"));
     object.insert(QStringLiteral("python.interpreter_path"), QStringLiteral("python3"));
     object.insert(QStringLiteral("python.execution_timeout_ms"), 15000);
+    object.insert(QStringLiteral("python.code_completion_enabled"), true);
+    object.insert(QStringLiteral("python.completion_trigger_threshold"), 2);
     object.insert(QStringLiteral("python.last_script_path"), QString());
     object.insert(QStringLiteral("python.last_directory"), QString());
     object.insert(QStringLiteral("plugins.disabled_ids"), QJsonArray());

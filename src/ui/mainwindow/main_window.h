@@ -32,6 +32,7 @@ class FileBrowserPanel;
 class ModelDocumentWidget;
 class ModelPropertiesPanel;
 class PluginManagerPanel;
+class PythonConsoleWidget;
 
 class MainWindow final : public QMainWindow {
     Q_OBJECT
@@ -76,6 +77,7 @@ private:
     void clearModelSelection();
     void checkForUpdates();
     void openSettings();
+    void openPythonTools();
     void reopenLastSession();
     void chooseFileBrowserRoot();
     void openRecentFile();
@@ -106,7 +108,7 @@ private:
     ModelPropertiesPanel *m_modelPropertiesPanel = nullptr;
     PluginManagerPanel *m_pluginManagerPanel = nullptr;
     EditorWorkspaceWidget *m_workspaceWidget = nullptr;
-    QPlainTextEdit *m_console = nullptr;
+    PythonConsoleWidget *m_console = nullptr;
     QLabel *m_pythonStatusLabel = nullptr;
     QLabel *m_documentStatusLabel = nullptr;
     QLabel *m_fileStatusLabel = nullptr;
@@ -127,6 +129,7 @@ private:
     QAction *m_closeOtherTabsAction = nullptr;
     QAction *m_reopenSessionAction = nullptr;
     QAction *m_settingsAction = nullptr;
+    QAction *m_pythonToolsAction = nullptr;
     QAction *m_chooseFileBrowserRootAction = nullptr;
     QAction *m_checkUpdatesAction = nullptr;
     QAction *m_fitAllAction = nullptr;

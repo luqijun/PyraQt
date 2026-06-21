@@ -8,6 +8,8 @@
 
 #include <QtTest>
 
+#include <algorithm>
+
 namespace {
 
 class PluginServicesTest final : public QObject {
@@ -16,6 +18,9 @@ class PluginServicesTest final : public QObject {
 private slots:
     void commandRegistration();
     void pluginDiscovery();
+    void pythonPluginLifecycleLoadsInProcess();
+    void pythonPluginDisableUnloadsInProcess();
+    void pythonPluginReloadKeepsPluginActive();
     void disablePluginPersists();
 };
 
@@ -42,11 +47,86 @@ void PluginServicesTest::pluginDiscovery()
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
 
     pluginManager.scanPlugins();
     const auto plugins = pluginManager.plugins();
     QVERIFY(!plugins.isEmpty());
+}
+
+void PluginServicesTest::pythonPluginLifecycleLoadsInProcess()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+
+    pluginManager.scanPlugins();
+    pluginManager.loadEnabledPlugins();
+    const auto plugins = pluginManager.plugins();
+    QVERIFY(std::any_of(plugins.begin(), plugins.end(), [](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.type == QStringLiteral("python") && plugin.loaded && plugin.active;
+    }));
+}
+
+void PluginServicesTest::pythonPluginReloadKeepsPluginActive()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+
+    pluginManager.scanPlugins();
+    pluginManager.loadEnabledPlugins();
+    const auto plugins = pluginManager.plugins();
+    auto it = std::find_if(plugins.begin(), plugins.end(), [](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.type == QStringLiteral("python") && plugin.loaded;
+    });
+    QVERIFY(it != plugins.end());
+    QVERIFY(pluginManager.reloadPlugin(it->id));
+    const auto reloadedPlugins = pluginManager.plugins();
+    auto reloadedIt = std::find_if(reloadedPlugins.begin(), reloadedPlugins.end(), [it](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.id == it->id;
+    });
+    QVERIFY(reloadedIt != reloadedPlugins.end());
+    QVERIFY(reloadedIt->loaded);
+    QVERIFY(reloadedIt->active);
+}
+
+void PluginServicesTest::pythonPluginDisableUnloadsInProcess()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+
+    pluginManager.scanPlugins();
+    pluginManager.loadEnabledPlugins();
+    const auto plugins = pluginManager.plugins();
+    auto it = std::find_if(plugins.begin(), plugins.end(), [](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.type == QStringLiteral("python") && plugin.loaded;
+    });
+    QVERIFY(it != plugins.end());
+    QVERIFY(pluginManager.setPluginEnabled(it->id, false));
+    const auto updatedPlugins = pluginManager.plugins();
+    auto updatedIt = std::find_if(updatedPlugins.begin(), updatedPlugins.end(), [it](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.id == it->id;
+    });
+    QVERIFY(updatedIt != updatedPlugins.end());
+    QVERIFY(!updatedIt->loaded);
+    QVERIFY(!updatedIt->active);
 }
 
 void PluginServicesTest::disablePluginPersists()
@@ -58,7 +138,7 @@ void PluginServicesTest::disablePluginPersists()
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
 
     pluginManager.scanPlugins();
     const auto plugins = pluginManager.plugins();
