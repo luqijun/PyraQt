@@ -16,6 +16,7 @@ public:
     explicit ModelDocumentWidget(QWidget *parent = nullptr);
 
     void setDocument(const pyraqt::core::ModelDocument &document);
+    void setDocumentFilePath(const QString &filePath);
     void setDisplayMode(pyraqt::core::ModelDisplayMode mode);
     void setSelectionMode(pyraqt::core::ModelSelectionMode mode);
     void fitAll();

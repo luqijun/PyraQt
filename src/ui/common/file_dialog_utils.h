@@ -12,6 +12,7 @@ struct FileDialogRequest {
     QString title;
     QString initialPath;
     QString filter;
+    QString defaultSuffix;
     QFileDialog::FileMode fileMode = QFileDialog::ExistingFile;
     QFileDialog::AcceptMode acceptMode = QFileDialog::AcceptOpen;
 };

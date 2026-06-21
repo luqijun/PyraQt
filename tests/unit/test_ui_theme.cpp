@@ -28,6 +28,7 @@ class UiThemeTest final : public QObject {
 private slots:
     void themeManagerEmitsThemeChanged();
     void editorAppliesThemeAndTracksChanges();
+    void workspaceRenamesOpenPathsAndClosesByPath();
     void pythonCompletionProviderIncludesPyraApi();
     void pythonCompletionProviderParsesDottedPrefixes();
     void editorConfiguresCodeCompletion();
@@ -35,6 +36,7 @@ private slots:
     void consoleEditorTriggersDottedCompletion();
     void consoleConfiguresCodeCompletionAndRuntimeGlobals();
     void themedFileDialogUsesQtDialogSettings();
+    void themedFileDialogUsesRequestedDefaultSuffix();
 };
 
 void UiThemeTest::themeManagerEmitsThemeChanged()
@@ -72,6 +74,57 @@ void UiThemeTest::editorAppliesThemeAndTracksChanges()
 
     QVERIFY(themeManager.setLightTheme());
     QCOMPARE(editor->appliedTheme(), QStringLiteral("light"));
+}
+
+void UiThemeTest::workspaceRenamesOpenPathsAndClosesByPath()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString scriptPath = dir.filePath(QStringLiteral("script.py"));
+    QFile scriptFile(scriptPath);
+    QVERIFY(scriptFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    scriptFile.write("print('hello')\n");
+    scriptFile.close();
+
+    const QString modelPath = dir.filePath(QStringLiteral("shape.brep"));
+    QFile modelFile(modelPath);
+    QVERIFY(modelFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    modelFile.write("BREP placeholder\n");
+    modelFile.close();
+
+    QVERIFY(workspace.openPath(scriptPath));
+    QVERIFY(workspace.openPath(modelPath));
+
+    const QString renamedScriptPath = dir.filePath(QStringLiteral("renamed_script.py"));
+    const QString renamedModelPath = dir.filePath(QStringLiteral("renamed_shape.brep"));
+
+    QVERIFY(workspace.renameOpenPath(scriptPath, renamedScriptPath));
+    QVERIFY(workspace.renameOpenPath(modelPath, renamedModelPath));
+    QVERIFY(workspace.hasOpenPath(renamedScriptPath));
+    QVERIFY(workspace.hasOpenPath(renamedModelPath));
+    QVERIFY(!workspace.hasOpenPath(scriptPath));
+    QVERIFY(!workspace.hasOpenPath(modelPath));
+    QVERIFY(workspace.openFilePaths().contains(renamedScriptPath));
+    QVERIFY(workspace.openFilePaths().contains(renamedModelPath));
+
+    pyraqt::ui::ScriptEditorWidget *currentEditor = workspace.currentEditor();
+    if (currentEditor != nullptr && currentEditor->currentFilePath() == renamedScriptPath) {
+        QVERIFY(!currentEditor->isModified());
+    }
+
+    QVERIFY(workspace.closePath(renamedModelPath));
+    QVERIFY(!workspace.hasOpenPath(renamedModelPath));
+    QVERIFY(workspace.closePath(renamedScriptPath));
+    QCOMPARE(workspace.editorCount(), 1);
+    QCOMPARE(workspace.currentFilePath(), QString());
 }
 
 void UiThemeTest::pythonCompletionProviderIncludesPyraApi()
@@ -253,6 +306,7 @@ void UiThemeTest::themedFileDialogUsesQtDialogSettings()
         QStringLiteral("Open File"),
         QStringLiteral("/tmp"),
         QStringLiteral("Python Files (*.py);;All Files (*)"),
+        QStringLiteral("py"),
         QFileDialog::ExistingFile,
         QFileDialog::AcceptOpen,
     };
@@ -262,7 +316,25 @@ void UiThemeTest::themedFileDialogUsesQtDialogSettings()
     QCOMPARE(dialog->fileMode(), QFileDialog::ExistingFile);
     QCOMPARE(dialog->acceptMode(), QFileDialog::AcceptOpen);
     QCOMPARE(dialog->directory().absolutePath(), QStringLiteral("/tmp"));
+    QCOMPARE(dialog->defaultSuffix(), QStringLiteral("py"));
     const QStringList expectedFilters{QStringLiteral("Python Files (*.py)"), QStringLiteral("All Files (*)")};
+    QCOMPARE(dialog->nameFilters(), expectedFilters);
+}
+
+void UiThemeTest::themedFileDialogUsesRequestedDefaultSuffix()
+{
+    const pyraqt::ui::FileDialogRequest request{
+        QStringLiteral("Save File"),
+        QStringLiteral("/tmp/example.stp"),
+        QStringLiteral("STP Files (*.stp);;All Files (*)"),
+        QStringLiteral("stp"),
+        QFileDialog::AnyFile,
+        QFileDialog::AcceptSave,
+    };
+
+    std::unique_ptr<QFileDialog> dialog(pyraqt::ui::createThemedFileDialog(request));
+    QCOMPARE(dialog->defaultSuffix(), QStringLiteral("stp"));
+    const QStringList expectedFilters{QStringLiteral("STP Files (*.stp)"), QStringLiteral("All Files (*)")};
     QCOMPARE(dialog->nameFilters(), expectedFilters);
 }
 

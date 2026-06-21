@@ -31,10 +31,14 @@
 #include <QAction>
 #include <QCloseEvent>
 #include <QDockWidget>
+#include <QDir>
 #include <QEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -283,6 +287,8 @@ void MainWindow::createDocks()
     connect(m_fileBrowserPanel, &FileBrowserPanel::fileActivated, this, [this](const QString &path) {
         openPath(path);
     });
+    connect(m_fileBrowserPanel, &FileBrowserPanel::renameRequested, this, &MainWindow::renamePathFromFileBrowser);
+    connect(m_fileBrowserPanel, &FileBrowserPanel::deleteRequested, this, &MainWindow::deletePathFromFileBrowser);
 
     auto *pluginDock = new QDockWidget(tr("Plugins"), this);
     pluginDock->setObjectName(QStringLiteral("pluginDock"));
@@ -316,6 +322,7 @@ void MainWindow::createMenus()
     m_recentFilesMenu = fileMenu->addMenu(QString());
     m_recentFilesMenu->setObjectName(QStringLiteral("recentFilesMenu"));
     fileMenu->addAction(m_saveScriptAction);
+    fileMenu->addAction(m_saveScriptAsAction);
     fileMenu->addAction(m_saveAllScriptsAction);
     fileMenu->addSeparator();
     fileMenu->addAction(m_closeTabAction);
@@ -385,6 +392,7 @@ void MainWindow::createMenus()
     mainToolbar->addAction(m_newScriptAction);
     mainToolbar->addAction(m_openScriptAction);
     mainToolbar->addAction(m_saveScriptAction);
+    mainToolbar->addAction(m_saveScriptAsAction);
     mainToolbar->addAction(m_saveAllScriptsAction);
     mainToolbar->addAction(m_runScriptAction);
     mainToolbar->addAction(m_stopScriptAction);
@@ -421,6 +429,7 @@ void MainWindow::createScriptActions()
     m_newScriptAction = new QAction(this);
     m_openScriptAction = new QAction(this);
     m_saveScriptAction = new QAction(this);
+    m_saveScriptAsAction = new QAction(this);
     m_saveAllScriptsAction = new QAction(this);
     m_runScriptAction = new QAction(this);
     m_stopScriptAction = new QAction(this);
@@ -451,7 +460,8 @@ void MainWindow::createScriptActions()
     m_newScriptAction->setShortcut(QKeySequence::New);
     m_openScriptAction->setShortcut(QKeySequence::Open);
     m_saveScriptAction->setShortcut(QKeySequence::Save);
-    m_saveAllScriptsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    m_saveScriptAsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    m_saveAllScriptsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_S));
     m_runScriptAction->setShortcut(Qt::Key_F5);
     m_stopScriptAction->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_F5));
     m_closeTabAction->setShortcut(QKeySequence::Close);
@@ -477,6 +487,7 @@ void MainWindow::createScriptActions()
                 tr("Open File"),
                 startDir,
                 tr("Supported Files (*.py *.stp *.step *.brep);;Python Files (*.py);;Model Files (*.stp *.step *.brep);;All Files (*)"),
+                QString(),
                 QFileDialog::ExistingFile,
                 QFileDialog::AcceptOpen,
             },
@@ -487,6 +498,9 @@ void MainWindow::createScriptActions()
     });
     connect(m_saveScriptAction, &QAction::triggered, this, [this] {
         saveCurrentScriptIfNeeded();
+    });
+    connect(m_saveScriptAsAction, &QAction::triggered, this, [this] {
+        saveCurrentScriptAs();
     });
     connect(m_saveAllScriptsAction, &QAction::triggered, this, [this] {
         saveAllScripts();
@@ -576,6 +590,16 @@ void MainWindow::registerBuiltInCommands()
     saveAllCommand.keywords = QStringList{QStringLiteral("script"), QStringLiteral("save"), QStringLiteral("all")};
     saveAllCommand.handler = [this] { saveAllScripts(); };
     m_commandManager.registerCommand(saveAllCommand);
+
+    CommandDescriptor saveAsCommand;
+    saveAsCommand.id = QStringLiteral("builtin.save_script_as");
+    saveAsCommand.ownerId = QStringLiteral("builtin");
+    saveAsCommand.title = tr("Save Script As");
+    saveAsCommand.description = tr("Save the current script to a new path.");
+    saveAsCommand.source = tr("Built-in");
+    saveAsCommand.keywords = QStringList{QStringLiteral("script"), QStringLiteral("save"), QStringLiteral("as")};
+    saveAsCommand.handler = [this] { saveCurrentScriptAs(); };
+    m_commandManager.registerCommand(saveAsCommand);
 
     CommandDescriptor paletteCommand;
     paletteCommand.id = QStringLiteral("builtin.open_command_palette");
@@ -826,6 +850,7 @@ void MainWindow::chooseFileBrowserRoot()
             tr("Choose File Browser Root"),
             m_workspaceManager.fileBrowserRoot(),
             QString(),
+            QString(),
             QFileDialog::Directory,
             QFileDialog::AcceptOpen,
         },
@@ -869,6 +894,35 @@ bool MainWindow::saveAllScripts()
     return m_workspaceWidget->saveAll();
 }
 
+bool MainWindow::saveCurrentScriptAs()
+{
+    if (m_workspaceWidget == nullptr || !m_workspaceWidget->hasAvailableEditor()) {
+        return false;
+    }
+
+    ScriptEditorWidget *editor = m_workspaceWidget->currentEditor();
+    if (editor == nullptr) {
+        return false;
+    }
+
+    const QString currentPath = editor->currentFilePath();
+    const QString startPath = currentPath.isEmpty() ? m_workspaceManager.fileBrowserRoot() : currentPath;
+    const QString filePath = saveScriptPath(startPath, tr("Save Python Script As"));
+    if (filePath.isEmpty()) {
+        return false;
+    }
+
+    const bool saved = m_workspaceWidget->saveCurrentAs(filePath);
+    if (saved) {
+        if (!currentPath.isEmpty() && currentPath != filePath) {
+            m_workspaceManager.replaceRecentFilePath(currentPath, filePath);
+        } else {
+            m_workspaceManager.addRecentFile(filePath);
+        }
+    }
+    return saved;
+}
+
 void MainWindow::showRecoveryPromptIfNeeded()
 {
     if (!m_crashRecoveryManager.didPreviousRunCrash()) {
@@ -898,16 +952,7 @@ bool MainWindow::saveCurrentScriptIfNeeded()
 
     QString filePath = editor->currentFilePath();
     if (filePath.isEmpty()) {
-        const QString startDir = m_workspaceManager.fileBrowserRoot();
-        filePath = getThemedSaveFileName(
-            {
-                tr("Save Python Script"),
-                startDir,
-                tr("Python Files (*.py);;All Files (*)"),
-                QFileDialog::AnyFile,
-                QFileDialog::AcceptSave,
-            },
-            this);
+        filePath = saveScriptPath(m_workspaceManager.fileBrowserRoot(), tr("Save Python Script"));
         if (filePath.isEmpty()) {
             return false;
         }
@@ -1024,6 +1069,9 @@ void MainWindow::retranslateUi()
     }
     if (m_saveScriptAction != nullptr) {
         m_saveScriptAction->setText(tr("Save Script"));
+    }
+    if (m_saveScriptAsAction != nullptr) {
+        m_saveScriptAsAction->setText(tr("Save Script As..."));
     }
     if (m_saveAllScriptsAction != nullptr) {
         m_saveAllScriptsAction->setText(tr("Save All"));
@@ -1171,6 +1219,101 @@ bool MainWindow::openPath(const QString &filePath, const bool addToRecent)
     return opened;
 }
 
+void MainWindow::renamePathFromFileBrowser(const QString &path)
+{
+    const QFileInfo fileInfo(path);
+    if (!fileInfo.exists()) {
+        QMessageBox::warning(this, tr("Rename"), tr("The selected path no longer exists."));
+        return;
+    }
+
+    if (fileInfo.isFile() && m_workspaceWidget != nullptr) {
+        ScriptEditorWidget *editor = m_workspaceWidget->currentEditor();
+        if (editor != nullptr && editor->currentFilePath() == fileInfo.absoluteFilePath() && editor->isModified()) {
+            QMessageBox::warning(this, tr("Rename"), tr("Save the current script before renaming it."));
+            return;
+        }
+    }
+
+    bool accepted = false;
+    const QString newName = QInputDialog::getText(
+        this,
+        tr("Rename"),
+        fileInfo.isDir() ? tr("Folder name") : tr("File name"),
+        QLineEdit::Normal,
+        fileInfo.fileName(),
+        &accepted);
+    if (!accepted) {
+        return;
+    }
+
+    const QString trimmedName = newName.trimmed();
+    if (trimmedName.isEmpty() || trimmedName == fileInfo.fileName()) {
+        return;
+    }
+    if (trimmedName.contains(QDir::separator())) {
+        QMessageBox::warning(this, tr("Rename"), tr("Only renaming within the same folder is supported."));
+        return;
+    }
+
+    const QString newPath = fileInfo.dir().absoluteFilePath(trimmedName);
+    if (QFileInfo::exists(newPath)) {
+        QMessageBox::warning(this, tr("Rename"), tr("A file or folder with that name already exists."));
+        return;
+    }
+
+    bool renamed = false;
+    if (fileInfo.isDir()) {
+        QDir parentDir = fileInfo.dir();
+        renamed = parentDir.rename(fileInfo.fileName(), trimmedName);
+    } else {
+        QFile file(path);
+        renamed = file.rename(newPath);
+    }
+
+    if (!renamed) {
+        QMessageBox::warning(this, tr("Rename"), tr("Failed to rename the selected path."));
+        return;
+    }
+
+    if (m_workspaceWidget != nullptr && m_workspaceWidget->hasOpenPath(fileInfo.absoluteFilePath())) {
+        m_workspaceWidget->renameOpenPath(fileInfo.absoluteFilePath(), newPath);
+    }
+    m_workspaceManager.replaceRecentFilePath(fileInfo.absoluteFilePath(), newPath);
+    updateFileBrowserRootAfterPathChange(fileInfo.absoluteFilePath(), newPath);
+}
+
+void MainWindow::deletePathFromFileBrowser(const QString &path)
+{
+    const QFileInfo fileInfo(path);
+    if (!fileInfo.exists()) {
+        QMessageBox::warning(this, tr("Delete"), tr("The selected path no longer exists."));
+        return;
+    }
+    if (!confirmDeletePath(path) || !confirmDeleteOpenEditors(path)) {
+        return;
+    }
+
+    const QStringList openPaths = openPathsUnder(path);
+    if (!removePathRecursively(path)) {
+        QMessageBox::warning(this, tr("Delete"), tr("Failed to delete the selected path."));
+        return;
+    }
+
+    if (m_workspaceWidget != nullptr) {
+        for (const QString &openPath : openPaths) {
+            if (m_workspaceWidget->hasOpenPath(openPath)) {
+                m_workspaceWidget->closePath(openPath);
+            }
+        }
+    }
+    for (const QString &openPath : openPaths) {
+        m_workspaceManager.removeRecentFile(openPath);
+    }
+    m_workspaceManager.removeRecentFile(fileInfo.absoluteFilePath());
+    updateFileBrowserRootAfterPathChange(fileInfo.absoluteFilePath());
+}
+
 QDockWidget *MainWindow::createTextDock(const QString &objectName, const QString &title, const QString &body)
 {
     auto *dock = new QDockWidget(title, this);
@@ -1180,6 +1323,136 @@ QDockWidget *MainWindow::createTextDock(const QString &objectName, const QString
     content->setPlainText(body);
     dock->setWidget(content);
     return dock;
+}
+
+void MainWindow::updateFileBrowserRootAfterPathChange(const QString &oldPath, const QString &newPath)
+{
+    const QString currentRoot = m_workspaceManager.fileBrowserRoot();
+    if (currentRoot.isEmpty()) {
+        return;
+    }
+
+    const QDir currentRootDir(currentRoot);
+    const QString oldAbsolutePath = QFileInfo(oldPath).absoluteFilePath();
+    const bool sameRoot = currentRootDir.absolutePath() == oldAbsolutePath;
+    const bool insideOldRoot = currentRoot.startsWith(oldAbsolutePath + QDir::separator());
+    if (!sameRoot && !insideOldRoot) {
+        return;
+    }
+
+    QString updatedRoot;
+    if (!newPath.isEmpty()) {
+        if (sameRoot) {
+            updatedRoot = QFileInfo(newPath).absoluteFilePath();
+        } else {
+            updatedRoot = currentRoot;
+            updatedRoot.replace(0, oldAbsolutePath.size(), QFileInfo(newPath).absoluteFilePath());
+        }
+    }
+
+    QFileInfo updatedInfo(updatedRoot);
+    if (updatedRoot.isEmpty() || !updatedInfo.exists()) {
+        QDir fallback = QFileInfo(oldAbsolutePath).dir();
+        while (!fallback.exists() && !fallback.isRoot()) {
+            fallback.cdUp();
+        }
+        updatedRoot = fallback.exists() ? fallback.absolutePath() : QDir::homePath();
+    }
+
+    m_workspaceManager.setFileBrowserRoot(updatedRoot);
+    const bool saved = m_configManager.save();
+    if (!saved) {
+        m_logManager.warning(tr("Failed to save file browser root."));
+    }
+}
+
+bool MainWindow::confirmDeletePath(const QString &path)
+{
+    const QFileInfo fileInfo(path);
+    const QString title = tr("Delete");
+    const QString message = fileInfo.isDir()
+        ? tr("Delete folder \"%1\" and all of its contents?").arg(fileInfo.fileName())
+        : tr("Delete file \"%1\"?").arg(fileInfo.fileName());
+    return QMessageBox::question(this, title, message, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes;
+}
+
+bool MainWindow::confirmDeleteOpenEditors(const QString &path)
+{
+    if (m_workspaceWidget == nullptr) {
+        return true;
+    }
+
+    const QStringList openPaths = openPathsUnder(path);
+    for (const QString &openPath : openPaths) {
+        ScriptEditorWidget *editor = nullptr;
+        for (int tabIndex = 0; tabIndex < m_workspaceWidget->editorCount(); ++tabIndex) {
+            ScriptEditorWidget *candidate = m_workspaceWidget->editorAt(tabIndex);
+            if (candidate != nullptr && candidate->currentFilePath() == openPath) {
+                editor = candidate;
+                break;
+            }
+        }
+        if (editor != nullptr && editor->isModified()) {
+            const QString message = tr("The open script \"%1\" has unsaved changes. Delete it and close the tab anyway?")
+                                        .arg(QFileInfo(openPath).fileName());
+            if (QMessageBox::question(this, tr("Delete Open Script"), message, QMessageBox::Yes | QMessageBox::No)
+                != QMessageBox::Yes) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+QString MainWindow::saveScriptPath(const QString &initialPath, const QString &title)
+{
+    const QFileInfo fileInfo(initialPath);
+    const QString startPath = fileInfo.exists() && fileInfo.isFile() ? fileInfo.absoluteFilePath()
+                                                                     : (fileInfo.exists() ? fileInfo.absoluteFilePath() : initialPath);
+    const QString suffix = fileInfo.isFile() && !fileInfo.suffix().isEmpty() ? fileInfo.suffix().toLower() : QStringLiteral("py");
+    const QString filter = suffix == QStringLiteral("py")
+        ? tr("Python Files (*.py);;All Files (*)")
+        : tr("%1 Files (*.%2);;All Files (*)").arg(suffix.toUpper(), suffix);
+    return getThemedSaveFileName(
+        {
+            title,
+            startPath,
+            filter,
+            suffix,
+            QFileDialog::AnyFile,
+            QFileDialog::AcceptSave,
+        },
+        this);
+}
+
+QStringList MainWindow::openPathsUnder(const QString &path) const
+{
+    QStringList paths;
+    if (m_workspaceWidget == nullptr) {
+        return paths;
+    }
+
+    const QFileInfo targetInfo(path);
+    const QString targetPath = targetInfo.absoluteFilePath();
+    for (const QString &openPath : m_workspaceWidget->openFilePaths()) {
+        if (openPath == targetPath || openPath.startsWith(targetPath + QDir::separator())) {
+            paths.push_back(openPath);
+        }
+    }
+    return paths;
+}
+
+bool MainWindow::removePathRecursively(const QString &path)
+{
+    const QFileInfo fileInfo(path);
+    if (!fileInfo.exists()) {
+        return true;
+    }
+    if (fileInfo.isDir()) {
+        QDir dir(path);
+        return dir.removeRecursively();
+    }
+    return QFile::remove(path);
 }
 
 } // namespace pyraqt::ui

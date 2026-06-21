@@ -34,6 +34,9 @@ public:
     bool saveCurrent();
     bool saveAll();
     bool saveCurrentAs(const QString &filePath);
+    bool hasOpenPath(const QString &filePath) const;
+    bool renameOpenPath(const QString &oldPath, const QString &newPath);
+    bool closePath(const QString &filePath);
     bool closeCurrent();
     bool closeEditorAt(int index);
     void closeOtherEditors();

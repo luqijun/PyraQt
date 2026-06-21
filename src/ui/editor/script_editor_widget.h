@@ -45,6 +45,7 @@ public:
     bool loadFromFile(const QString &filePath);
     bool save();
     bool saveAs(const QString &filePath);
+    void setCurrentFilePath(const QString &filePath);
     void setEditorMessage(const QString &message);
     void applyTheme(const QString &themeName);
 

@@ -75,6 +75,55 @@ void WorkspaceManager::addRecentFile(const QString &path)
     emit recentFilesChanged(files);
 }
 
+void WorkspaceManager::replaceRecentFilePath(const QString &oldPath, const QString &newPath)
+{
+    const QString normalizedOldPath = QFileInfo(oldPath).absoluteFilePath();
+    const QString normalizedNewPath = cleanedPath(newPath);
+    if (normalizedOldPath.isEmpty() || normalizedNewPath.isEmpty()) {
+        return;
+    }
+
+    QStringList files = recentFiles();
+    bool changed = false;
+    for (QString &file : files) {
+        if (file == normalizedOldPath) {
+            file = normalizedNewPath;
+            changed = true;
+        }
+    }
+    files.removeDuplicates();
+    if (!changed) {
+        files.removeAll(normalizedNewPath);
+        files.prepend(normalizedNewPath);
+    }
+    while (files.size() > maxRecentFiles()) {
+        files.removeLast();
+    }
+    persistStringList(QStringLiteral("workspace.recent_files"), files);
+    const bool saved = m_configManager.save();
+    Q_UNUSED(saved)
+    emit recentFilesChanged(files);
+}
+
+void WorkspaceManager::removeRecentFile(const QString &path)
+{
+    const QString normalizedPath = QFileInfo(path).absoluteFilePath();
+    if (normalizedPath.isEmpty()) {
+        return;
+    }
+
+    QStringList files = recentFiles();
+    const qsizetype removed = files.removeAll(normalizedPath);
+    if (removed <= 0) {
+        return;
+    }
+
+    persistStringList(QStringLiteral("workspace.recent_files"), files);
+    const bool saved = m_configManager.save();
+    Q_UNUSED(saved)
+    emit recentFilesChanged(files);
+}
+
 void WorkspaceManager::clearRecentFiles()
 {
     persistStringList(QStringLiteral("workspace.recent_files"), {});

@@ -264,6 +264,15 @@ bool ScriptEditorWidget::saveAs(const QString &filePath)
     return true;
 }
 
+void ScriptEditorWidget::setCurrentFilePath(const QString &filePath)
+{
+    if (m_currentFilePath == filePath) {
+        return;
+    }
+    m_currentFilePath = filePath;
+    emit filePathChanged(m_currentFilePath);
+}
+
 void ScriptEditorWidget::setEditorMessage(const QString &message)
 {
 #if PYRAQT_HAS_QSCINTILLA

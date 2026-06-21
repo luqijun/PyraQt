@@ -129,6 +129,46 @@ bool EditorWorkspaceWidget::saveCurrentAs(const QString &filePath)
     return saved;
 }
 
+bool EditorWorkspaceWidget::hasOpenPath(const QString &filePath) const
+{
+    return findWidgetByPath(filePath) >= 0;
+}
+
+bool EditorWorkspaceWidget::renameOpenPath(const QString &oldPath, const QString &newPath)
+{
+    const int index = findWidgetByPath(oldPath);
+    if (index < 0) {
+        return false;
+    }
+
+    QWidget *widget = m_tabWidget->widget(index);
+    if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
+        editor->setCurrentFilePath(newPath);
+    } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+        documentWidget->setDocumentFilePath(newPath);
+        updateTabTitle(index);
+        if (widget == m_tabWidget->currentWidget()) {
+            emitCurrentWidgetState();
+        }
+        emit openFilesChanged(openFilePaths());
+    } else {
+        return false;
+    }
+
+    updateTabTitle(index);
+    if (widget == m_tabWidget->currentWidget()) {
+        emitCurrentWidgetState();
+    }
+    emit openFilesChanged(openFilePaths());
+    return true;
+}
+
+bool EditorWorkspaceWidget::closePath(const QString &filePath)
+{
+    const int index = findWidgetByPath(filePath);
+    return index >= 0 ? closeEditorInternal(index) : false;
+}
+
 bool EditorWorkspaceWidget::closeCurrent()
 {
     return closeEditorInternal(m_tabWidget->currentIndex());

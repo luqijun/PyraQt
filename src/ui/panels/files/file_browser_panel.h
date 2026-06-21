@@ -4,6 +4,7 @@
 
 class QFileSystemModel;
 class QModelIndex;
+class QPoint;
 class QTreeView;
 
 namespace pyraqt::ui {
@@ -19,8 +20,12 @@ public:
 
 signals:
     void fileActivated(const QString &path);
+    void renameRequested(const QString &path);
+    void deleteRequested(const QString &path);
 
 private:
+    void showContextMenu(const QPoint &position);
+
     QFileSystemModel *m_model = nullptr;
     QTreeView *m_treeView = nullptr;
 };

@@ -11,6 +11,9 @@ QFileDialog *createThemedFileDialog(const FileDialogRequest &request, QWidget *p
     dialog->setOption(QFileDialog::DontUseNativeDialog, true);
     dialog->setFileMode(request.fileMode);
     dialog->setAcceptMode(request.acceptMode);
+    if (!request.defaultSuffix.isEmpty()) {
+        dialog->setDefaultSuffix(request.defaultSuffix);
+    }
     if (!request.filter.isEmpty()) {
         dialog->selectNameFilter(request.filter.split(QStringLiteral(";;")).constFirst());
     }

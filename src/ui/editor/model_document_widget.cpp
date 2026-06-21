@@ -43,6 +43,16 @@ void ModelDocumentWidget::setDocument(const pyraqt::core::ModelDocument &documen
     }
 }
 
+void ModelDocumentWidget::setDocumentFilePath(const QString &filePath)
+{
+    m_document.filePath = filePath;
+    if (m_viewWidget != nullptr) {
+        pyraqt::core::ModelDocument updated = m_viewWidget->document();
+        updated.filePath = filePath;
+        m_viewWidget->setDocument(updated);
+    }
+}
+
 void ModelDocumentWidget::setDisplayMode(const pyraqt::core::ModelDisplayMode mode)
 {
     m_viewWidget->setDisplayMode(mode);

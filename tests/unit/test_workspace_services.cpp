@@ -17,6 +17,7 @@ class WorkspaceServicesTest final : public QObject {
 private slots:
     void workspaceDefaults();
     void recentFilesAreDeduplicatedAndTrimmed();
+    void recentFilesCanBeRenamedAndRemoved();
     void sessionFiltersMissingFiles();
     void sessionKeepsSupportedModelFiles();
     void runtimeAndUpdateSettingsPersist();
@@ -71,6 +72,33 @@ void WorkspaceServicesTest::recentFilesAreDeduplicatedAndTrimmed()
     QCOMPARE(recentFiles.size(), 2);
     QCOMPARE(recentFiles.at(0), QFileInfo(third).canonicalFilePath());
     QCOMPARE(recentFiles.at(1), QFileInfo(first).canonicalFilePath());
+}
+
+void WorkspaceServicesTest::recentFilesCanBeRenamedAndRemoved()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString first = createFile(dir, QStringLiteral("first.py"));
+    const QString second = createFile(dir, QStringLiteral("second.py"));
+    const QString renamed = dir.filePath(QStringLiteral("renamed.py"));
+    QVERIFY(QFile::rename(first, renamed));
+
+    workspaceManager.addRecentFile(first);
+    workspaceManager.addRecentFile(second);
+    workspaceManager.replaceRecentFilePath(first, renamed);
+
+    QStringList recentFiles = workspaceManager.recentFiles();
+    QCOMPARE(recentFiles.size(), 2);
+    QCOMPARE(recentFiles.at(0), QFileInfo(renamed).canonicalFilePath());
+    QCOMPARE(recentFiles.at(1), QFileInfo(second).canonicalFilePath());
+
+    workspaceManager.removeRecentFile(second);
+    recentFiles = workspaceManager.recentFiles();
+    QCOMPARE(recentFiles.size(), 1);
+    QCOMPARE(recentFiles.first(), QFileInfo(renamed).canonicalFilePath());
 }
 
 void WorkspaceServicesTest::sessionFiltersMissingFiles()

@@ -80,15 +80,24 @@ private:
     void openPythonTools();
     void reopenLastSession();
     void chooseFileBrowserRoot();
+    void renamePathFromFileBrowser(const QString &path);
+    void deletePathFromFileBrowser(const QString &path);
     void openRecentFile();
     bool saveAllScripts();
     void showRecoveryPromptIfNeeded();
     bool saveCurrentScriptIfNeeded();
+    bool saveCurrentScriptAs();
     QString currentScriptFilePath() const;
     void openCommandPalette();
     void appendConsoleLine(const QString &prefix, const QString &message);
     void restoreSession();
     void retranslateUi();
+    void updateFileBrowserRootAfterPathChange(const QString &oldPath, const QString &newPath = QString());
+    bool confirmDeletePath(const QString &path);
+    bool confirmDeleteOpenEditors(const QString &path);
+    [[nodiscard]] QString saveScriptPath(const QString &initialPath, const QString &title);
+    [[nodiscard]] QStringList openPathsUnder(const QString &path) const;
+    bool removePathRecursively(const QString &path);
     QDockWidget *createTextDock(const QString &objectName, const QString &title, const QString &body);
 
     core::ConfigManager &m_configManager;
@@ -122,6 +131,7 @@ private:
     QAction *m_newScriptAction = nullptr;
     QAction *m_openScriptAction = nullptr;
     QAction *m_saveScriptAction = nullptr;
+    QAction *m_saveScriptAsAction = nullptr;
     QAction *m_saveAllScriptsAction = nullptr;
     QAction *m_runScriptAction = nullptr;
     QAction *m_stopScriptAction = nullptr;

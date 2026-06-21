@@ -4,6 +4,7 @@
 #include <QFileInfo>
 #include <QFileSystemModel>
 #include <QHeaderView>
+#include <QMenu>
 #include <QTreeView>
 #include <QVBoxLayout>
 
@@ -22,6 +23,7 @@ FileBrowserPanel::FileBrowserPanel(QWidget *parent)
     m_treeView = new QTreeView(this);
     m_treeView->setModel(m_model);
     m_treeView->setRootIndex(m_model->index(QDir::homePath()));
+    m_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
     m_treeView->setAccessibleName(tr("File Browser"));
     m_treeView->setAccessibleDescription(tr("Local file browser for opening Python scripts"));
     m_treeView->header()->setStretchLastSection(true);
@@ -33,6 +35,7 @@ FileBrowserPanel::FileBrowserPanel(QWidget *parent)
             emit fileActivated(path);
         }
     });
+    connect(m_treeView, &QTreeView::customContextMenuRequested, this, &FileBrowserPanel::showContextMenu);
 }
 
 void FileBrowserPanel::setRootPath(const QString &path)
@@ -44,6 +47,29 @@ void FileBrowserPanel::setRootPath(const QString &path)
 QString FileBrowserPanel::rootPath() const
 {
     return m_model->filePath(m_treeView->rootIndex());
+}
+
+void FileBrowserPanel::showContextMenu(const QPoint &position)
+{
+    const QModelIndex index = m_treeView->indexAt(position);
+    if (!index.isValid()) {
+        return;
+    }
+
+    const QString path = m_model->filePath(index);
+    if (path.isEmpty()) {
+        return;
+    }
+
+    QMenu menu(this);
+    QAction *renameAction = menu.addAction(tr("Rename"));
+    QAction *deleteAction = menu.addAction(tr("Delete"));
+    QAction *selectedAction = menu.exec(m_treeView->viewport()->mapToGlobal(position));
+    if (selectedAction == renameAction) {
+        emit renameRequested(path);
+    } else if (selectedAction == deleteAction) {
+        emit deleteRequested(path);
+    }
 }
 
 } // namespace pyraqt::ui

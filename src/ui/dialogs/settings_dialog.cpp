@@ -143,6 +143,7 @@ QWidget *SettingsDialog::createGeneralPage()
                 tr("Choose File Browser Root"),
                 m_browserRootEdit->text(),
                 QString(),
+                QString(),
                 QFileDialog::Directory,
                 QFileDialog::AcceptOpen,
             },
@@ -216,6 +217,7 @@ QWidget *SettingsDialog::createPythonPage()
             {
                 tr("Choose Python Interpreter"),
                 m_interpreterEdit->text(),
+                QString(),
                 QString(),
                 QFileDialog::ExistingFile,
                 QFileDialog::AcceptOpen,

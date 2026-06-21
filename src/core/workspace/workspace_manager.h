@@ -20,6 +20,8 @@ public:
 
     [[nodiscard]] QStringList recentFiles() const;
     void addRecentFile(const QString &path);
+    void replaceRecentFilePath(const QString &oldPath, const QString &newPath);
+    void removeRecentFile(const QString &path);
     void clearRecentFiles();
 
     [[nodiscard]] QString fileBrowserRoot() const;
