@@ -67,6 +67,7 @@ private:
     void createScriptActions();
     void refreshRecentFilesMenu();
     void registerBuiltInCommands();
+    void updateTabActionStates();
     void updateModelActionStates();
     bool openPath(const QString &filePath, bool addToRecent = true);
     void runCurrentScript();
@@ -137,6 +138,8 @@ private:
     QAction *m_stopScriptAction = nullptr;
     QAction *m_closeTabAction = nullptr;
     QAction *m_closeOtherTabsAction = nullptr;
+    QAction *m_closeRightTabsAction = nullptr;
+    QAction *m_closeAllTabsAction = nullptr;
     QAction *m_reopenSessionAction = nullptr;
     QAction *m_settingsAction = nullptr;
     QAction *m_pythonToolsAction = nullptr;

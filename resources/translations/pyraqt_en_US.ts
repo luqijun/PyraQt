@@ -64,6 +64,18 @@
         <translation>&amp;Quit</translation>
     </message>
     <message>
+        <source>Close Other Tabs</source>
+        <translation>Close Other Tabs</translation>
+    </message>
+    <message>
+        <source>Close Tabs to the Right</source>
+        <translation>Close Tabs to the Right</translation>
+    </message>
+    <message>
+        <source>Close All Tabs</source>
+        <translation>Close All Tabs</translation>
+    </message>
+    <message>
         <source>Light</source>
         <translation>Light</translation>
     </message>

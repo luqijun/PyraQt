@@ -199,6 +199,9 @@ void MainWindow::createCentralEditor()
             m_documentStatusLabel->setText(modified ? tr("Document: Modified") : tr("Document: Saved"));
         }
     });
+    connect(m_workspaceWidget, &EditorWorkspaceWidget::openFilesChanged, this, [this](const QStringList &) {
+        updateTabActionStates();
+    });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::currentFilePathChanged, this, [this](const QString &filePath) {
         if (m_fileStatusLabel != nullptr) {
             m_fileStatusLabel->setText(filePath.isEmpty() ? tr("File: Untitled") : tr("File: %1").arg(QFileInfo(filePath).fileName()));
@@ -215,6 +218,7 @@ void MainWindow::createCentralEditor()
             }
             m_workspaceManager.addRecentFile(filePath);
         }
+        updateTabActionStates();
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::currentCursorChanged, this, [this](int line, int column) {
         if (m_cursorStatusLabel != nullptr) {
@@ -327,6 +331,8 @@ void MainWindow::createMenus()
     fileMenu->addSeparator();
     fileMenu->addAction(m_closeTabAction);
     fileMenu->addAction(m_closeOtherTabsAction);
+    fileMenu->addAction(m_closeRightTabsAction);
+    fileMenu->addAction(m_closeAllTabsAction);
     fileMenu->addAction(m_reopenSessionAction);
     fileMenu->addSeparator();
     auto *quitAction = fileMenu->addAction(QString());
@@ -435,6 +441,8 @@ void MainWindow::createScriptActions()
     m_stopScriptAction = new QAction(this);
     m_closeTabAction = new QAction(this);
     m_closeOtherTabsAction = new QAction(this);
+    m_closeRightTabsAction = new QAction(this);
+    m_closeAllTabsAction = new QAction(this);
     m_reopenSessionAction = new QAction(this);
     m_settingsAction = new QAction(this);
     m_pythonToolsAction = new QAction(this);
@@ -475,6 +483,7 @@ void MainWindow::createScriptActions()
     m_selectEdgeAction->setCheckable(true);
     m_selectVertexAction->setCheckable(true);
     m_stopScriptAction->setEnabled(false);
+    updateTabActionStates();
     updateModelActionStates();
 
     connect(m_newScriptAction, &QAction::triggered, this, [this] {
@@ -510,7 +519,15 @@ void MainWindow::createScriptActions()
     connect(m_closeTabAction, &QAction::triggered, this, [this] {
         m_workspaceWidget->closeCurrent();
     });
-    connect(m_closeOtherTabsAction, &QAction::triggered, m_workspaceWidget, &EditorWorkspaceWidget::closeOtherEditors);
+    connect(m_closeOtherTabsAction, &QAction::triggered, this, [this] {
+        m_workspaceWidget->closeOtherEditors();
+    });
+    connect(m_closeRightTabsAction, &QAction::triggered, this, [this] {
+        m_workspaceWidget->closeEditorsToRight();
+    });
+    connect(m_closeAllTabsAction, &QAction::triggered, this, [this] {
+        m_workspaceWidget->closeAllEditors();
+    });
     connect(m_reopenSessionAction, &QAction::triggered, this, &MainWindow::reopenLastSession);
     connect(m_settingsAction, &QAction::triggered, this, &MainWindow::openSettings);
     connect(m_pythonToolsAction, &QAction::triggered, this, &MainWindow::openPythonTools);
@@ -640,6 +657,36 @@ void MainWindow::registerBuiltInCommands()
     closeTabCommand.keywords = QStringList{QStringLiteral("tab"), QStringLiteral("close")};
     closeTabCommand.handler = [this] { m_workspaceWidget->closeCurrent(); };
     m_commandManager.registerCommand(closeTabCommand);
+
+    CommandDescriptor closeOtherTabsCommand;
+    closeOtherTabsCommand.id = QStringLiteral("builtin.close_other_tabs");
+    closeOtherTabsCommand.ownerId = QStringLiteral("builtin");
+    closeOtherTabsCommand.title = tr("Close Other Tabs");
+    closeOtherTabsCommand.description = tr("Close all tabs except the current one.");
+    closeOtherTabsCommand.source = tr("Built-in");
+    closeOtherTabsCommand.keywords = QStringList{QStringLiteral("tab"), QStringLiteral("close"), QStringLiteral("other")};
+    closeOtherTabsCommand.handler = [this] { m_workspaceWidget->closeOtherEditors(); };
+    m_commandManager.registerCommand(closeOtherTabsCommand);
+
+    CommandDescriptor closeTabsToRightCommand;
+    closeTabsToRightCommand.id = QStringLiteral("builtin.close_tabs_to_right");
+    closeTabsToRightCommand.ownerId = QStringLiteral("builtin");
+    closeTabsToRightCommand.title = tr("Close Tabs to the Right");
+    closeTabsToRightCommand.description = tr("Close every tab to the right of the current tab.");
+    closeTabsToRightCommand.source = tr("Built-in");
+    closeTabsToRightCommand.keywords = QStringList{QStringLiteral("tab"), QStringLiteral("close"), QStringLiteral("right")};
+    closeTabsToRightCommand.handler = [this] { m_workspaceWidget->closeEditorsToRight(); };
+    m_commandManager.registerCommand(closeTabsToRightCommand);
+
+    CommandDescriptor closeAllTabsCommand;
+    closeAllTabsCommand.id = QStringLiteral("builtin.close_all_tabs");
+    closeAllTabsCommand.ownerId = QStringLiteral("builtin");
+    closeAllTabsCommand.title = tr("Close All Tabs");
+    closeAllTabsCommand.description = tr("Close every open editor tab.");
+    closeAllTabsCommand.source = tr("Built-in");
+    closeAllTabsCommand.keywords = QStringList{QStringLiteral("tab"), QStringLiteral("close"), QStringLiteral("all")};
+    closeAllTabsCommand.handler = [this] { m_workspaceWidget->closeAllEditors(); };
+    m_commandManager.registerCommand(closeAllTabsCommand);
 
     CommandDescriptor openFileCommand;
     openFileCommand.id = QStringLiteral("builtin.open_file");
@@ -1088,6 +1135,12 @@ void MainWindow::retranslateUi()
     if (m_closeOtherTabsAction != nullptr) {
         m_closeOtherTabsAction->setText(tr("Close Other Tabs"));
     }
+    if (m_closeRightTabsAction != nullptr) {
+        m_closeRightTabsAction->setText(tr("Close Tabs to the Right"));
+    }
+    if (m_closeAllTabsAction != nullptr) {
+        m_closeAllTabsAction->setText(tr("Close All Tabs"));
+    }
     if (m_reopenSessionAction != nullptr) {
         m_reopenSessionAction->setText(tr("Reopen Last Session"));
     }
@@ -1170,6 +1223,28 @@ void MainWindow::retranslateUi()
     }
 
     statusBar()->showMessage(tr("Ready"));
+}
+
+void MainWindow::updateTabActionStates()
+{
+    const bool hasWorkspace = m_workspaceWidget != nullptr;
+    const int tabCount = hasWorkspace ? m_workspaceWidget->editorCount() : 0;
+    const bool hasTabs = tabCount > 0;
+    const bool hasMultipleTabs = tabCount > 1;
+    const bool hasRightTabs = hasWorkspace && m_workspaceWidget->hasEditorsToRight();
+
+    if (m_closeTabAction != nullptr) {
+        m_closeTabAction->setEnabled(hasTabs);
+    }
+    if (m_closeOtherTabsAction != nullptr) {
+        m_closeOtherTabsAction->setEnabled(hasMultipleTabs);
+    }
+    if (m_closeRightTabsAction != nullptr) {
+        m_closeRightTabsAction->setEnabled(hasRightTabs);
+    }
+    if (m_closeAllTabsAction != nullptr) {
+        m_closeAllTabsAction->setEnabled(hasTabs);
+    }
 }
 
 void MainWindow::updateModelActionStates()

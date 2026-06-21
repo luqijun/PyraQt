@@ -64,6 +64,18 @@
         <translation>退出(&amp;Q)</translation>
     </message>
     <message>
+        <source>Close Other Tabs</source>
+        <translation>关闭其他标签</translation>
+    </message>
+    <message>
+        <source>Close Tabs to the Right</source>
+        <translation>关闭右侧标签</translation>
+    </message>
+    <message>
+        <source>Close All Tabs</source>
+        <translation>关闭全部标签</translation>
+    </message>
+    <message>
         <source>Light</source>
         <translation>浅色</translation>
     </message>

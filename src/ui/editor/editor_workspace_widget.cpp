@@ -7,7 +7,10 @@
 #include "ui/editor/model_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
 
+#include <QAction>
 #include <QFileInfo>
+#include <QMenu>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -32,6 +35,7 @@ EditorWorkspaceWidget::EditorWorkspaceWidget(
     m_tabWidget->setMovable(true);
     m_tabWidget->setAccessibleName(tr("Document Workspace"));
     m_tabWidget->setAccessibleDescription(tr("Tabbed workspace for scripts and imported models"));
+    m_tabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(m_tabWidget);
 
     connect(m_tabWidget, &QTabWidget::currentChanged, this, [this](int) {
@@ -41,6 +45,7 @@ EditorWorkspaceWidget::EditorWorkspaceWidget(
     connect(m_tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
         closeEditorInternal(index);
     });
+    connect(m_tabWidget->tabBar(), &QTabBar::customContextMenuRequested, this, &EditorWorkspaceWidget::showTabContextMenu);
     connect(&m_themeManager, &core::ThemeManager::themeChanged, this, [this](const QString &themeName) {
         for (int index = 0; index < m_tabWidget->count(); ++index) {
             if (auto *editor = qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index))) {
@@ -181,12 +186,12 @@ bool EditorWorkspaceWidget::closeEditorAt(int index)
 
 void EditorWorkspaceWidget::closeOtherEditors()
 {
-    const int currentIndex = m_tabWidget->currentIndex();
-    for (int index = m_tabWidget->count() - 1; index >= 0; --index) {
-        if (index != currentIndex) {
-            closeEditorInternal(index);
-        }
-    }
+    closeOtherEditors(m_tabWidget->currentIndex());
+}
+
+void EditorWorkspaceWidget::closeEditorsToRight()
+{
+    closeEditorsToRight(m_tabWidget->currentIndex());
 }
 
 bool EditorWorkspaceWidget::closeAllEditors()
@@ -251,6 +256,12 @@ bool EditorWorkspaceWidget::hasAvailableEditor() const
 {
     ScriptEditorWidget *editor = currentEditor();
     return editor != nullptr && editor->isAvailable();
+}
+
+bool EditorWorkspaceWidget::hasEditorsToRight() const
+{
+    const int currentIndex = m_tabWidget->currentIndex();
+    return currentIndex >= 0 && currentIndex < m_tabWidget->count() - 1;
 }
 
 int EditorWorkspaceWidget::editorCount() const
@@ -431,6 +442,41 @@ void EditorWorkspaceWidget::emitCurrentWidgetState()
     emit modelSelectionChanged({});
 }
 
+void EditorWorkspaceWidget::showTabContextMenu(const QPoint &position)
+{
+    QTabBar *tabBar = m_tabWidget->tabBar();
+    if (tabBar == nullptr) {
+        return;
+    }
+
+    const int index = tabBar->tabAt(position);
+    if (index < 0) {
+        return;
+    }
+
+    QMenu menu(this);
+    QAction *closeAction = menu.addAction(tr("Close Tab"));
+    QAction *closeOthersAction = menu.addAction(tr("Close Other Tabs"));
+    QAction *closeRightAction = menu.addAction(tr("Close Tabs to the Right"));
+    QAction *closeAllAction = menu.addAction(tr("Close All Tabs"));
+
+    closeAction->setEnabled(m_tabWidget->count() > 0);
+    closeOthersAction->setEnabled(m_tabWidget->count() > 1);
+    closeRightAction->setEnabled(index < m_tabWidget->count() - 1);
+    closeAllAction->setEnabled(m_tabWidget->count() > 0);
+
+    QAction *selectedAction = menu.exec(tabBar->mapToGlobal(position));
+    if (selectedAction == closeAction) {
+        closeEditorInternal(index);
+    } else if (selectedAction == closeOthersAction) {
+        closeOtherEditors(index);
+    } else if (selectedAction == closeRightAction) {
+        closeEditorsToRight(index);
+    } else if (selectedAction == closeAllAction) {
+        closeAllEditors();
+    }
+}
+
 int EditorWorkspaceWidget::findEditorByPath(const QString &filePath) const
 {
     for (int index = 0; index < m_tabWidget->count(); ++index) {
@@ -456,6 +502,37 @@ int EditorWorkspaceWidget::findWidgetByPath(const QString &filePath) const
         }
     }
     return -1;
+}
+
+bool EditorWorkspaceWidget::closeOtherEditors(const int keepIndex)
+{
+    if (keepIndex < 0 || keepIndex >= m_tabWidget->count()) {
+        return false;
+    }
+
+    for (int index = m_tabWidget->count() - 1; index >= 0; --index) {
+        if (index == keepIndex) {
+            continue;
+        }
+        if (!closeEditorInternal(index)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool EditorWorkspaceWidget::closeEditorsToRight(const int index)
+{
+    if (index < 0 || index >= m_tabWidget->count()) {
+        return false;
+    }
+
+    for (int tabIndex = m_tabWidget->count() - 1; tabIndex > index; --tabIndex) {
+        if (!closeEditorInternal(tabIndex)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 bool EditorWorkspaceWidget::closeEditorInternal(int index)

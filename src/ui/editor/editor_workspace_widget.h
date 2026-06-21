@@ -40,6 +40,7 @@ public:
     bool closeCurrent();
     bool closeEditorAt(int index);
     void closeOtherEditors();
+    void closeEditorsToRight();
     bool closeAllEditors();
 
     [[nodiscard]] ScriptEditorWidget *currentEditor() const;
@@ -50,6 +51,7 @@ public:
     [[nodiscard]] QString currentFilePath() const;
     [[nodiscard]] bool hasOpenEditors() const;
     [[nodiscard]] bool hasAvailableEditor() const;
+    [[nodiscard]] bool hasEditorsToRight() const;
     [[nodiscard]] int editorCount() const;
     [[nodiscard]] QStringList openFilePaths() const;
     [[nodiscard]] core::WorkspaceSession captureSession(const QStringList &recentFiles, const QString &fileBrowserRoot) const;
@@ -73,8 +75,11 @@ private:
     void connectEditor(ScriptEditorWidget *editor);
     void connectModelDocumentWidget(ModelDocumentWidget *widget);
     void emitCurrentWidgetState();
+    void showTabContextMenu(const QPoint &position);
     int findEditorByPath(const QString &filePath) const;
     int findWidgetByPath(const QString &filePath) const;
+    bool closeOtherEditors(int keepIndex);
+    bool closeEditorsToRight(int index);
     bool closeEditorInternal(int index);
 
     core::ThemeManager &m_themeManager;

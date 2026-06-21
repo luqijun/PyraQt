@@ -29,6 +29,10 @@ private slots:
     void themeManagerEmitsThemeChanged();
     void editorAppliesThemeAndTracksChanges();
     void workspaceRenamesOpenPathsAndClosesByPath();
+    void workspaceClosesOtherEditors();
+    void workspaceClosesEditorsToRight();
+    void workspaceCloseAllEditorsKeepsUntitledTab();
+    void workspaceStopsBatchCloseWhenConfirmationRejected();
     void pythonCompletionProviderIncludesPyraApi();
     void pythonCompletionProviderParsesDottedPrefixes();
     void editorConfiguresCodeCompletion();
@@ -125,6 +129,156 @@ void UiThemeTest::workspaceRenamesOpenPathsAndClosesByPath()
     QVERIFY(workspace.closePath(renamedScriptPath));
     QCOMPARE(workspace.editorCount(), 1);
     QCOMPARE(workspace.currentFilePath(), QString());
+}
+
+void UiThemeTest::workspaceClosesOtherEditors()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString firstPath = dir.filePath(QStringLiteral("first.py"));
+    const QString secondPath = dir.filePath(QStringLiteral("second.py"));
+    const QString thirdPath = dir.filePath(QStringLiteral("third.py"));
+    for (const QString &path : {firstPath, secondPath, thirdPath}) {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("print('hello')\n");
+        file.close();
+        QVERIFY(workspace.openPath(path));
+    }
+
+    QVERIFY(workspace.openPath(secondPath));
+    QCOMPARE(workspace.currentFilePath(), secondPath);
+
+    workspace.closeOtherEditors();
+
+    QCOMPARE(workspace.editorCount(), 1);
+    QCOMPARE(workspace.currentFilePath(), secondPath);
+    QVERIFY(workspace.hasOpenPath(secondPath));
+    QVERIFY(!workspace.hasOpenPath(firstPath));
+    QVERIFY(!workspace.hasOpenPath(thirdPath));
+}
+
+void UiThemeTest::workspaceClosesEditorsToRight()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString firstPath = dir.filePath(QStringLiteral("first.py"));
+    const QString secondPath = dir.filePath(QStringLiteral("second.py"));
+    const QString thirdPath = dir.filePath(QStringLiteral("third.py"));
+    const QString fourthPath = dir.filePath(QStringLiteral("fourth.py"));
+    for (const QString &path : {firstPath, secondPath, thirdPath, fourthPath}) {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("print('hello')\n");
+        file.close();
+        QVERIFY(workspace.openPath(path));
+    }
+
+    QVERIFY(workspace.openPath(secondPath));
+    QCOMPARE(workspace.currentFilePath(), secondPath);
+    QVERIFY(workspace.hasEditorsToRight());
+
+    workspace.closeEditorsToRight();
+
+    QCOMPARE(workspace.editorCount(), 2);
+    QCOMPARE(workspace.currentFilePath(), secondPath);
+    QVERIFY(workspace.hasOpenPath(firstPath));
+    QVERIFY(workspace.hasOpenPath(secondPath));
+    QVERIFY(!workspace.hasOpenPath(thirdPath));
+    QVERIFY(!workspace.hasOpenPath(fourthPath));
+    QVERIFY(!workspace.hasEditorsToRight());
+}
+
+void UiThemeTest::workspaceCloseAllEditorsKeepsUntitledTab()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString scriptPath = dir.filePath(QStringLiteral("script.py"));
+    QFile file(scriptPath);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    file.write("print('hello')\n");
+    file.close();
+
+    QVERIFY(workspace.openPath(scriptPath));
+    QVERIFY(workspace.closeAllEditors());
+
+    QCOMPARE(workspace.editorCount(), 1);
+    QCOMPARE(workspace.currentFilePath(), QString());
+    QVERIFY(workspace.currentEditor() != nullptr);
+}
+
+void UiThemeTest::workspaceStopsBatchCloseWhenConfirmationRejected()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString firstPath = dir.filePath(QStringLiteral("first.py"));
+    const QString secondPath = dir.filePath(QStringLiteral("second.py"));
+    const QString thirdPath = dir.filePath(QStringLiteral("third.py"));
+    for (const QString &path : {firstPath, secondPath, thirdPath}) {
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+        file.write("print('hello')\n");
+        file.close();
+        QVERIFY(workspace.openPath(path));
+    }
+
+#if PYRAQT_HAS_QSCINTILLA
+    QVERIFY(workspace.openPath(secondPath));
+    pyraqt::ui::ScriptEditorWidget *editor = workspace.currentEditor();
+    QVERIFY(editor != nullptr);
+    editor->setTextForTesting(QStringLiteral("print('modified')\n"));
+    QVERIFY(editor->isModified());
+
+    int confirmationCount = 0;
+    connect(&workspace, &pyraqt::ui::EditorWorkspaceWidget::requestCloseConfirmation, &workspace,
+        [&confirmationCount](const QString &, const QString &, bool *accepted) {
+            ++confirmationCount;
+            QVERIFY(accepted != nullptr);
+            *accepted = false;
+        });
+
+    workspace.closeAllEditors();
+
+    QCOMPARE(confirmationCount, 1);
+    QCOMPARE(workspace.editorCount(), 2);
+    QVERIFY(workspace.hasOpenPath(firstPath));
+    QVERIFY(workspace.hasOpenPath(secondPath));
+    QVERIFY(!workspace.hasOpenPath(thirdPath));
+#else
+    QSKIP("Modified-state close confirmation requires the QScintilla editor backend.");
+#endif
 }
 
 void UiThemeTest::pythonCompletionProviderIncludesPyraApi()
