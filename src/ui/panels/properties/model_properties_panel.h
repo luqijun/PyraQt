@@ -20,8 +20,13 @@ public:
     void clearSelection();
     void showPlaceholder(const QString &message);
 
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
+
 private:
     void setValue(QLabel *label, const QString &value);
+    void updateDisplayedValue(QLabel *label);
+    QLabel *createValueLabel(const QString &objectName);
 
     QLabel *m_stateLabel = nullptr;
     QLabel *m_fileLabel = nullptr;

@@ -11,6 +11,8 @@
     <file alias="icons/close-tab.svg">icons/close-tab.svg</file>
     <file alias="icons/reopen-session.svg">icons/reopen-session.svg</file>
     <file alias="icons/settings.svg">icons/settings.svg</file>
+    <file alias="icons/sun.svg">icons/sun.svg</file>
+    <file alias="icons/moon.svg">icons/moon.svg</file>
     <file alias="icons/python-tools.svg">icons/python-tools.svg</file>
     <file alias="icons/file-browser-root.svg">icons/file-browser-root.svg</file>
     <file alias="icons/command-palette.svg">icons/command-palette.svg</file>

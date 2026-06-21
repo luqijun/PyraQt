@@ -32,6 +32,30 @@ QByteArray tintedSvgData(const QString &iconName, const QColor &color)
     return svg;
 }
 
+QColor disabledIconColorForTheme(const QString &themeName)
+{
+    if (themeName == QStringLiteral("light")) {
+        return QColor(QStringLiteral("#94a3b8"));
+    }
+    return QColor(QStringLiteral("#9aa9bf"));
+}
+
+QPixmap renderSvgPixmap(const QByteArray &svgData, const QSize &size)
+{
+    QSvgRenderer renderer(svgData);
+    if (!renderer.isValid()) {
+        return {};
+    }
+
+    QPixmap pixmap(size);
+    pixmap.fill(Qt::transparent);
+
+    QPainter painter(&pixmap);
+    renderer.render(&painter);
+    painter.end();
+    return pixmap;
+}
+
 } // namespace
 
 QColor iconColorForTheme(const QString &themeName)
@@ -51,24 +75,23 @@ QIcon themedSvgIcon(const QString &iconName, const QString &themeName, const QSi
         return *cached;
     }
 
-    const QByteArray svgData = tintedSvgData(iconName, iconColorForTheme(themeName));
-    if (svgData.isEmpty()) {
+    const QByteArray normalSvgData = tintedSvgData(iconName, iconColorForTheme(themeName));
+    const QByteArray disabledSvgData = tintedSvgData(iconName, disabledIconColorForTheme(themeName));
+    if (normalSvgData.isEmpty() || disabledSvgData.isEmpty()) {
         return {};
     }
 
-    QSvgRenderer renderer(svgData);
-    if (!renderer.isValid()) {
+    const QPixmap normalPixmap = renderSvgPixmap(normalSvgData, size);
+    const QPixmap disabledPixmap = renderSvgPixmap(disabledSvgData, size);
+    if (normalPixmap.isNull() || disabledPixmap.isNull()) {
         return {};
     }
 
-    QPixmap pixmap(size);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    renderer.render(&painter);
-    painter.end();
-
-    auto *icon = new QIcon(pixmap);
+    auto *icon = new QIcon();
+    icon->addPixmap(normalPixmap, QIcon::Normal, QIcon::Off);
+    icon->addPixmap(normalPixmap, QIcon::Active, QIcon::Off);
+    icon->addPixmap(normalPixmap, QIcon::Selected, QIcon::Off);
+    icon->addPixmap(disabledPixmap, QIcon::Disabled, QIcon::Off);
     cache.insert(key, icon);
     return *icon;
 }

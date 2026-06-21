@@ -20,17 +20,30 @@
 #include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
 #include "ui/editor/script_editor_widget.h"
+#include "ui/common/icon_utils.h"
 #include "ui/mainwindow/main_window.h"
+#include "ui/panels/files/file_browser_panel.h"
+#include "ui/panels/plugins/plugin_manager_panel.h"
+#include "ui/panels/properties/model_properties_panel.h"
 #include "ui/panels/python/python_console_widget.h"
 
 #include <QApplication>
+#include <QDir>
+#include <QDockWidget>
 #include <QFile>
+#include <QFileSystemModel>
+#include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
+#include <QSizePolicy>
+#include <QTableWidget>
+#include <QTimer>
 #include <QToolBar>
 #include <QToolButton>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTreeView>
 #include <memory>
 
 namespace {
@@ -56,6 +69,10 @@ private slots:
     void consoleEditorTriggersDottedCompletion();
     void consoleConfiguresCodeCompletionAndRuntimeGlobals();
     void mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange();
+    void mainWindowPropertiesDockTracksCurrentDocumentKind();
+    void modelPropertiesPanelUsesFixedMinimumWidthAndTooltips();
+    void fileBrowserPanelProvidesTooltips();
+    void pluginManagerPanelProvidesTooltips();
     void themedFileDialogUsesQtDialogSettings();
     void themedFileDialogUsesRequestedDefaultSuffix();
 };
@@ -600,12 +617,29 @@ void UiThemeTest::mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange()
         updateManager,
         crashRecoveryManager);
 
-    auto *toolBar = window.findChild<QToolBar *>(QStringLiteral("mainToolBar"));
-    QVERIFY(toolBar != nullptr);
-    QCOMPARE(toolBar->toolButtonStyle(), Qt::ToolButtonIconOnly);
+    auto *fileToolBar = window.findChild<QToolBar *>(QStringLiteral("fileToolBar"));
+    auto *scriptToolBar = window.findChild<QToolBar *>(QStringLiteral("scriptToolBar"));
+    auto *workspaceToolBar = window.findChild<QToolBar *>(QStringLiteral("workspaceToolBar"));
+    auto *viewToolBar = window.findChild<QToolBar *>(QStringLiteral("viewToolBar"));
+    auto *selectionToolBar = window.findChild<QToolBar *>(QStringLiteral("selectionToolBar"));
+    auto *themeToolBar = window.findChild<QToolBar *>(QStringLiteral("themeToolBar"));
+    QVERIFY(fileToolBar != nullptr);
+    QVERIFY(scriptToolBar != nullptr);
+    QVERIFY(workspaceToolBar != nullptr);
+    QVERIFY(viewToolBar != nullptr);
+    QVERIFY(selectionToolBar != nullptr);
+    QVERIFY(themeToolBar != nullptr);
+
+    for (QToolBar *toolBar : {fileToolBar, scriptToolBar, workspaceToolBar, viewToolBar, selectionToolBar, themeToolBar}) {
+        QVERIFY(toolBar != nullptr);
+        QCOMPARE(toolBar->toolButtonStyle(), Qt::ToolButtonIconOnly);
+        QVERIFY(toolBar->isMovable());
+        QVERIFY(toolBar->isFloatable());
+        QVERIFY(!toolBar->windowTitle().isEmpty());
+    }
 
     QAction *runAction = nullptr;
-    for (QAction *action : toolBar->actions()) {
+    for (QAction *action : scriptToolBar->actions()) {
         if (action != nullptr && action->text() == QStringLiteral("Run Script")) {
             runAction = action;
             break;
@@ -614,16 +648,40 @@ void UiThemeTest::mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange()
     QVERIFY(runAction != nullptr);
     QVERIFY(!runAction->icon().isNull());
 
+    QAction *lightThemeAction = nullptr;
+    QAction *darkThemeAction = nullptr;
+    for (QAction *action : themeToolBar->actions()) {
+        if (action != nullptr && action->text() == QStringLiteral("Light")) {
+            lightThemeAction = action;
+        }
+        if (action != nullptr && action->text() == QStringLiteral("Dark")) {
+            darkThemeAction = action;
+        }
+    }
+    QVERIFY(lightThemeAction != nullptr);
+    QVERIFY(darkThemeAction != nullptr);
+    QVERIFY(!lightThemeAction->icon().isNull());
+    QVERIFY(!darkThemeAction->icon().isNull());
+    QCOMPARE(lightThemeAction->toolTip(), QStringLiteral("Switch to light theme"));
+    QCOMPARE(darkThemeAction->toolTip(), QStringLiteral("Switch to dark theme"));
+
+    const QIcon themedIcon = pyraqt::ui::themedSvgIcon(QStringLiteral("sun"), QStringLiteral("dark"), QSize(20, 20));
+    QVERIFY(!themedIcon.isNull());
+    QVERIFY(!themedIcon.pixmap(QSize(20, 20), QIcon::Normal, QIcon::Off).isNull());
+    QVERIFY(!themedIcon.pixmap(QSize(20, 20), QIcon::Disabled, QIcon::Off).isNull());
+
     auto *console = window.findChild<pyraqt::ui::PythonConsoleWidget *>();
     QVERIFY(console != nullptr);
     QVERIFY(console->actionButtonsHaveIcons());
     QVERIFY(!console->actionButtonsShowText());
 
-    const QList<QToolButton *> toolButtons = toolBar->findChildren<QToolButton *>();
-    QVERIFY(!toolButtons.isEmpty());
-    for (QToolButton *button : toolButtons) {
-        QVERIFY(button != nullptr);
-        QCOMPARE(button->toolButtonStyle(), Qt::ToolButtonIconOnly);
+    for (QToolBar *toolBar : {fileToolBar, scriptToolBar, workspaceToolBar, viewToolBar, selectionToolBar, themeToolBar}) {
+        const QList<QToolButton *> toolButtons = toolBar->findChildren<QToolButton *>();
+        QVERIFY(!toolButtons.isEmpty());
+        for (QToolButton *button : toolButtons) {
+            QVERIFY(button != nullptr);
+            QCOMPARE(button->toolButtonStyle(), Qt::ToolButtonIconOnly);
+        }
     }
 
     QVERIFY(themeManager.setLightTheme());
@@ -633,6 +691,176 @@ void UiThemeTest::mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange()
     QVERIFY(themeManager.setDarkTheme());
     QVERIFY(!runAction->icon().isNull());
     QVERIFY(console->actionButtonsHaveIcons());
+}
+
+void UiThemeTest::mainWindowPropertiesDockTracksCurrentDocumentKind()
+{
+    auto *app = qobject_cast<QApplication *>(QCoreApplication::instance());
+    QVERIFY(app != nullptr);
+
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString textPath = dir.filePath(QStringLiteral("notes.txt"));
+    QFile textFile(textPath);
+    QVERIFY(textFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    textFile.write("plain text\n");
+    textFile.close();
+
+    const QString modelPath = dir.filePath(QStringLiteral("shape.brep"));
+    QFile modelFile(modelPath);
+    QVERIFY(modelFile.open(QIODevice::WriteOnly | QIODevice::Text));
+    modelFile.write("BREP placeholder\n");
+    modelFile.close();
+
+    const QString binaryPath = dir.filePath(QStringLiteral("archive.bin"));
+    QFile binaryFile(binaryPath);
+    QVERIFY(binaryFile.open(QIODevice::WriteOnly));
+    binaryFile.write(QByteArray("abc\0def", 7));
+    binaryFile.close();
+
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::ThemeManager themeManager(*app);
+    pyraqt::core::I18nManager i18nManager(*app);
+    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+    pyraqt::core::WorkspaceManager workspaceManager(configManager);
+    pyraqt::core::UpdateManager updateManager(configManager, logManager);
+    pyraqt::core::CrashRecoveryManager crashRecoveryManager(configManager, logManager);
+
+    pyraqt::ui::MainWindow window(configManager,
+        logManager,
+        modelImportManager,
+        themeManager,
+        i18nManager,
+        runtimeManager,
+        executionManager,
+        commandManager,
+        pluginManager,
+        workspaceManager,
+        updateManager,
+        crashRecoveryManager);
+
+    auto *propertiesDock = window.findChild<QDockWidget *>(QStringLiteral("propertiesDock"));
+    auto *workspace = window.findChild<pyraqt::ui::EditorWorkspaceWidget *>(QStringLiteral("editorWorkspace"));
+    QVERIFY(propertiesDock != nullptr);
+    QVERIFY(workspace != nullptr);
+    window.show();
+    QCoreApplication::processEvents();
+    QVERIFY(!propertiesDock->isVisible());
+
+    QVERIFY(workspace->openPath(textPath));
+    QCoreApplication::processEvents();
+    QVERIFY(!propertiesDock->isVisible());
+
+    QTimer::singleShot(0, [] {
+        for (QWidget *widget : QApplication::topLevelWidgets()) {
+            if (auto *messageBox = qobject_cast<QMessageBox *>(widget)) {
+                messageBox->accept();
+            }
+        }
+    });
+    QVERIFY(workspace->openPath(modelPath));
+    QCoreApplication::processEvents();
+    QVERIFY(propertiesDock->isVisible());
+
+    QVERIFY(workspace->openPath(textPath));
+    QCoreApplication::processEvents();
+    QVERIFY(!propertiesDock->isVisible());
+
+    QVERIFY(workspace->openPath(binaryPath));
+    QCoreApplication::processEvents();
+    QVERIFY(!propertiesDock->isVisible());
+}
+
+void UiThemeTest::modelPropertiesPanelUsesFixedMinimumWidthAndTooltips()
+{
+    pyraqt::ui::ModelPropertiesPanel panel;
+    panel.resize(280, 320);
+    panel.show();
+    QCoreApplication::processEvents();
+
+    QCOMPARE(panel.minimumWidth(), 280);
+
+    pyraqt::core::ModelDocument document;
+    document.statusMessage = QStringLiteral("Loaded");
+    document.filePath = QStringLiteral("/tmp/projects/a/very/long/path/to/a-model-with-a-long-name.brep");
+    document.boundingBoxText = QStringLiteral("X:[-1000.0, 1000.0] Y:[-1000.0, 1000.0] Z:[-1000.0, 1000.0]");
+    panel.setModelDocument(document);
+    QCoreApplication::processEvents();
+
+    auto *fileLabel = panel.findChild<QLabel *>(QStringLiteral("propertiesFileValue"));
+    QVERIFY(fileLabel != nullptr);
+    QCOMPARE(fileLabel->toolTip(), document.filePath);
+    QCOMPARE(fileLabel->sizePolicy().horizontalPolicy(), QSizePolicy::Expanding);
+    QVERIFY(fileLabel->text().contains(QStringLiteral("...")) || fileLabel->text().contains(QChar(0x2026)));
+    QVERIFY(fileLabel->text() != document.filePath);
+}
+
+void UiThemeTest::fileBrowserPanelProvidesTooltips()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    const QString nestedDir = dir.filePath(QStringLiteral("nested"));
+    QDir().mkpath(nestedDir);
+    const QString filePath = QDir(nestedDir).filePath(QStringLiteral("very_long_filename_for_tooltip_check.txt"));
+    QFile file(filePath);
+    QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Text));
+    file.write("hello\n");
+    file.close();
+
+    pyraqt::ui::FileBrowserPanel panel;
+    panel.setRootPath(dir.path());
+
+    auto *treeView = panel.findChild<QTreeView *>();
+    QVERIFY(treeView != nullptr);
+
+    const auto *model = qobject_cast<const QFileSystemModel *>(treeView->model());
+    QVERIFY(model != nullptr);
+    const QModelIndex fileIndex = model->index(filePath);
+    QVERIFY(fileIndex.isValid());
+    QCOMPARE(panel.toolTipForIndex(fileIndex), filePath);
+    QCOMPARE(fileIndex.data(Qt::ToolTipRole).toString(), filePath);
+}
+
+void UiThemeTest::pluginManagerPanelProvidesTooltips()
+{
+    pyraqt::core::ConfigManager configManager;
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+
+    pluginManager.scanPlugins();
+
+    pyraqt::ui::PluginManagerPanel panel(pluginManager);
+    QTableWidget *table = panel.tableForTesting();
+    QVERIFY(table != nullptr);
+    QVERIFY(table->rowCount() > 0);
+
+    QTableWidgetItem *nameItem = table->item(0, 1);
+    QTableWidgetItem *statusItem = table->item(0, 4);
+    QTableWidgetItem *detailsItem = table->item(0, 6);
+    QVERIFY(nameItem != nullptr);
+    QVERIFY(statusItem != nullptr);
+    QVERIFY(detailsItem != nullptr);
+    QCOMPARE(nameItem->toolTip(), nameItem->text());
+    QCOMPARE(statusItem->toolTip(), statusItem->text());
+    QVERIFY(!detailsItem->toolTip().isNull());
 }
 
 void UiThemeTest::themedFileDialogUsesQtDialogSettings()

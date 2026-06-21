@@ -15,6 +15,7 @@ class PluginManagerPanel final : public QWidget {
 
 public:
     explicit PluginManagerPanel(pyraqt::core::PluginManager &pluginManager, QWidget *parent = nullptr);
+    [[nodiscard]] QTableWidget *tableForTesting() const;
 
 private:
     void refreshTable();

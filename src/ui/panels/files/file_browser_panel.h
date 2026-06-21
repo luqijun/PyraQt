@@ -17,6 +17,7 @@ public:
 
     void setRootPath(const QString &path);
     [[nodiscard]] QString rootPath() const;
+    [[nodiscard]] QString toolTipForIndex(const QModelIndex &index) const;
 
 signals:
     void fileActivated(const QString &path);

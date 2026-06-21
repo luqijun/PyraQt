@@ -10,13 +10,32 @@
 
 namespace pyraqt::ui {
 
+namespace {
+
+class FileBrowserFileSystemModel final : public QFileSystemModel {
+public:
+    using QFileSystemModel::QFileSystemModel;
+
+    QVariant data(const QModelIndex &index, int role) const override
+    {
+        if (role == Qt::ToolTipRole && index.isValid()) {
+            return QFileSystemModel::data(index, QFileSystemModel::FilePathRole);
+        }
+        return QFileSystemModel::data(index, role);
+    }
+};
+
+}
+
 FileBrowserPanel::FileBrowserPanel(QWidget *parent)
     : QWidget(parent)
 {
+    setObjectName(QStringLiteral("fileBrowserPanel"));
+
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
 
-    m_model = new QFileSystemModel(this);
+    m_model = new FileBrowserFileSystemModel(this);
     m_model->setFilter(QDir::AllDirs | QDir::NoDotAndDotDot | QDir::Files);
     m_model->setRootPath(QDir::homePath());
 
@@ -24,6 +43,7 @@ FileBrowserPanel::FileBrowserPanel(QWidget *parent)
     m_treeView->setModel(m_model);
     m_treeView->setRootIndex(m_model->index(QDir::homePath()));
     m_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_treeView->setMouseTracking(true);
     m_treeView->setAccessibleName(tr("File Browser"));
     m_treeView->setAccessibleDescription(tr("Local file browser for opening Python scripts"));
     m_treeView->header()->setStretchLastSection(true);
@@ -47,6 +67,14 @@ void FileBrowserPanel::setRootPath(const QString &path)
 QString FileBrowserPanel::rootPath() const
 {
     return m_model->filePath(m_treeView->rootIndex());
+}
+
+QString FileBrowserPanel::toolTipForIndex(const QModelIndex &index) const
+{
+    if (!index.isValid()) {
+        return {};
+    }
+    return index.data(QFileSystemModel::FilePathRole).toString();
 }
 
 void FileBrowserPanel::showContextMenu(const QPoint &position)

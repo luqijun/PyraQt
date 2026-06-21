@@ -16,8 +16,11 @@ PluginManagerPanel::PluginManagerPanel(pyraqt::core::PluginManager &pluginManage
     : QWidget(parent)
     , m_pluginManager(pluginManager)
 {
+    setObjectName(QStringLiteral("pluginManagerPanel"));
+
     auto *layout = new QVBoxLayout(this);
     m_table = new QTableWidget(this);
+    m_table->setObjectName(QStringLiteral("pluginManagerTable"));
     m_table->setColumnCount(7);
     m_table->setHorizontalHeaderLabels({
         tr("Enabled"),
@@ -49,13 +52,20 @@ void PluginManagerPanel::refreshTable()
 
         auto *checkBox = new QCheckBox(m_table);
         checkBox->setChecked(plugin.enabled);
+        checkBox->setToolTip(plugin.name);
         connect(checkBox, &QCheckBox::toggled, this, [this, plugin](bool checked) {
             m_pluginManager.setPluginEnabled(plugin.id, checked);
         });
         m_table->setCellWidget(row, 0, checkBox);
-        m_table->setItem(row, 1, new QTableWidgetItem(plugin.name));
-        m_table->setItem(row, 2, new QTableWidgetItem(plugin.type));
-        m_table->setItem(row, 3, new QTableWidgetItem(plugin.version));
+        auto *nameItem = new QTableWidgetItem(plugin.name);
+        nameItem->setToolTip(plugin.name);
+        m_table->setItem(row, 1, nameItem);
+        auto *typeItem = new QTableWidgetItem(plugin.type);
+        typeItem->setToolTip(plugin.type);
+        m_table->setItem(row, 2, typeItem);
+        auto *versionItem = new QTableWidgetItem(plugin.version);
+        versionItem->setToolTip(plugin.version);
+        m_table->setItem(row, 3, versionItem);
         QString status = tr("Discovered");
         if (!plugin.enabled) {
             status = tr("Disabled");
@@ -66,15 +76,26 @@ void PluginManagerPanel::refreshTable()
         } else if (plugin.loaded) {
             status = tr("Loaded");
         }
-        m_table->setItem(row, 4, new QTableWidgetItem(status));
+        auto *statusItem = new QTableWidgetItem(status);
+        statusItem->setToolTip(status);
+        m_table->setItem(row, 4, statusItem);
         auto *reloadButton = new QPushButton(tr("Reload"), m_table);
         reloadButton->setEnabled(plugin.enabled && (plugin.type == QStringLiteral("python") || plugin.type == QStringLiteral("cpp")));
+        reloadButton->setToolTip(tr("Reload %1").arg(plugin.name));
         connect(reloadButton, &QPushButton::clicked, this, [this, plugin] {
             m_pluginManager.reloadPlugin(plugin.id);
         });
         m_table->setCellWidget(row, 5, reloadButton);
-        m_table->setItem(row, 6, new QTableWidgetItem(plugin.error.isEmpty() ? plugin.description : plugin.error));
+        const QString details = plugin.error.isEmpty() ? plugin.description : plugin.error;
+        auto *detailsItem = new QTableWidgetItem(details);
+        detailsItem->setToolTip(details);
+        m_table->setItem(row, 6, detailsItem);
     }
+}
+
+QTableWidget *PluginManagerPanel::tableForTesting() const
+{
+    return m_table;
 }
 
 } // namespace pyraqt::ui

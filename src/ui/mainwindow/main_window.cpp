@@ -208,6 +208,7 @@ void MainWindow::createCentralEditor()
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::openFilesChanged, this, [this](const QStringList &) {
         updateTabActionStates();
+        updatePropertiesDockVisibility();
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::editorAvailabilityChanged, this, [this](bool) {
         updateTabActionStates();
@@ -229,6 +230,7 @@ void MainWindow::createCentralEditor()
             m_workspaceManager.addRecentFile(filePath);
         }
         updateTabActionStates();
+        updatePropertiesDockVisibility();
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::currentCursorChanged, this, [this](int line, int column) {
         if (m_cursorStatusLabel != nullptr) {
@@ -270,6 +272,7 @@ void MainWindow::createCentralEditor()
                     .arg(core::ModelPropertyService::formatSelectionMode(document.selectionMode)));
         }
         updateModelActionStates();
+        updatePropertiesDockVisibility();
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::modelSelectionChanged, this, [this](const core::ModelSelectionInfo &selection) {
         if (m_modelPropertiesPanel == nullptr) {
@@ -318,11 +321,13 @@ void MainWindow::createDocks()
     pluginDock->setWidget(m_pluginManagerPanel);
     addDockWidget(Qt::LeftDockWidgetArea, pluginDock);
 
-    auto *propertiesDock = new QDockWidget(tr("Properties"), this);
-    propertiesDock->setObjectName(QStringLiteral("propertiesDock"));
-    m_modelPropertiesPanel = new ModelPropertiesPanel(propertiesDock);
-    propertiesDock->setWidget(m_modelPropertiesPanel);
-    addDockWidget(Qt::RightDockWidgetArea, propertiesDock);
+    m_propertiesDock = new QDockWidget(tr("Properties"), this);
+    m_propertiesDock->setObjectName(QStringLiteral("propertiesDock"));
+    m_propertiesDock->setMinimumWidth(280);
+    m_modelPropertiesPanel = new ModelPropertiesPanel(m_propertiesDock);
+    m_propertiesDock->setWidget(m_modelPropertiesPanel);
+    addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
+    updatePropertiesDockVisibility();
 
     auto *consoleDock = new QDockWidget(tr("Python Console"), this);
     consoleDock->setObjectName(QStringLiteral("consoleDock"));
@@ -411,27 +416,20 @@ void MainWindow::createMenus()
     selectionMenu->addAction(m_selectVertexAction);
     selectionMenu->addAction(m_clearSelectionAction);
 
-    m_mainToolBar = addToolBar(QString());
-    m_mainToolBar->setObjectName(QStringLiteral("mainToolBar"));
-    m_mainToolBar->addAction(m_newScriptAction);
-    m_mainToolBar->addAction(m_openScriptAction);
-    m_mainToolBar->addAction(m_saveScriptAction);
-    m_mainToolBar->addAction(m_saveScriptAsAction);
-    m_mainToolBar->addAction(m_saveAllScriptsAction);
-    m_mainToolBar->addAction(m_runScriptAction);
-    m_mainToolBar->addAction(m_stopScriptAction);
-    m_mainToolBar->addAction(m_commandPaletteAction);
-    m_mainToolBar->addAction(m_settingsAction);
-    m_mainToolBar->addAction(m_checkUpdatesAction);
-    m_mainToolBar->addAction(m_fitAllAction);
-    m_mainToolBar->addAction(m_wireframeAction);
-    m_mainToolBar->addAction(m_shadedAction);
-    m_mainToolBar->addAction(m_shadedEdgesAction);
-    m_mainToolBar->addAction(m_selectFaceAction);
-    m_mainToolBar->addAction(m_selectEdgeAction);
-    m_mainToolBar->addAction(m_clearSelectionAction);
-    m_mainToolBar->addAction(m_lightThemeAction);
-    m_mainToolBar->addAction(m_darkThemeAction);
+    m_fileToolBar = createGroupedToolBar(QStringLiteral("fileToolBar"),
+        {m_newScriptAction, m_openScriptAction, m_saveScriptAction, m_saveScriptAsAction, m_saveAllScriptsAction},
+        tr("File Tools"));
+    m_scriptToolBar = createGroupedToolBar(
+        QStringLiteral("scriptToolBar"), {m_runScriptAction, m_stopScriptAction, m_commandPaletteAction}, tr("Script Tools"));
+    m_workspaceToolBar = createGroupedToolBar(
+        QStringLiteral("workspaceToolBar"), {m_settingsAction, m_checkUpdatesAction, m_chooseFileBrowserRootAction}, tr("Workspace Tools"));
+    m_viewToolBar = createGroupedToolBar(
+        QStringLiteral("viewToolBar"), {m_fitAllAction, m_wireframeAction, m_shadedAction, m_shadedEdgesAction}, tr("View Tools"));
+    m_selectionToolBar = createGroupedToolBar(
+        QStringLiteral("selectionToolBar"), {m_selectFaceAction, m_selectEdgeAction, m_clearSelectionAction}, tr("Selection Tools"));
+    m_themeToolBar = createGroupedToolBar(
+        QStringLiteral("themeToolBar"), {m_lightThemeAction, m_darkThemeAction}, tr("Theme Tools"));
+    applyActionIcons();
     configureToolbar();
 }
 
@@ -1083,6 +1081,7 @@ void MainWindow::restoreSession()
     } else {
         m_workspaceWidget->newDocument();
     }
+    updatePropertiesDockVisibility();
 }
 
 void MainWindow::retranslateUi()
@@ -1119,6 +1118,24 @@ void MainWindow::retranslateUi()
     }
     if (auto *quitAction = findChild<QAction *>(QStringLiteral("quitAction"))) {
         quitAction->setText(tr("&Quit"));
+    }
+    if (m_fileToolBar != nullptr) {
+        m_fileToolBar->setWindowTitle(tr("File Tools"));
+    }
+    if (m_scriptToolBar != nullptr) {
+        m_scriptToolBar->setWindowTitle(tr("Script Tools"));
+    }
+    if (m_workspaceToolBar != nullptr) {
+        m_workspaceToolBar->setWindowTitle(tr("Workspace Tools"));
+    }
+    if (m_viewToolBar != nullptr) {
+        m_viewToolBar->setWindowTitle(tr("View Tools"));
+    }
+    if (m_selectionToolBar != nullptr) {
+        m_selectionToolBar->setWindowTitle(tr("Selection Tools"));
+    }
+    if (m_themeToolBar != nullptr) {
+        m_themeToolBar->setWindowTitle(tr("Theme Tools"));
     }
 
     if (m_lightThemeAction != nullptr) {
@@ -1366,8 +1383,8 @@ void MainWindow::applyActionIcons()
     setActionIcon(m_selectEdgeAction, QStringLiteral("select-edge"));
     setActionIcon(m_selectVertexAction, QStringLiteral("select-vertex"));
     setActionIcon(m_clearSelectionAction, QStringLiteral("clear-selection"));
-    setActionIcon(m_lightThemeAction, QStringLiteral("shaded"));
-    setActionIcon(m_darkThemeAction, QStringLiteral("wireframe"));
+    setActionIcon(m_lightThemeAction, QStringLiteral("sun"));
+    setActionIcon(m_darkThemeAction, QStringLiteral("moon"));
 }
 
 void MainWindow::configureActionPresentation()
@@ -1400,13 +1417,38 @@ void MainWindow::configureActionPresentation()
 
 void MainWindow::configureToolbar()
 {
-    if (m_mainToolBar == nullptr) {
+    for (QToolBar *toolBar : {m_fileToolBar, m_scriptToolBar, m_workspaceToolBar, m_viewToolBar, m_selectionToolBar, m_themeToolBar}) {
+        if (toolBar == nullptr) {
+            continue;
+        }
+        toolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        toolBar->setIconSize(QSize(20, 20));
+        toolBar->setMovable(true);
+        toolBar->setFloatable(true);
+    }
+}
+
+void MainWindow::updatePropertiesDockVisibility()
+{
+    if (m_propertiesDock == nullptr || m_workspaceWidget == nullptr) {
         return;
     }
-    m_mainToolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-    m_mainToolBar->setIconSize(QSize(20, 20));
-    m_mainToolBar->setMovable(false);
-    m_mainToolBar->setFloatable(false);
+
+    const bool shouldShow = m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::Model;
+    m_propertiesDock->setVisible(shouldShow);
+}
+
+QToolBar *MainWindow::createGroupedToolBar(const QString &objectName, const QList<QAction *> &actions, const QString &title)
+{
+    auto *toolBar = addToolBar(title);
+    toolBar->setObjectName(objectName);
+    toolBar->setWindowTitle(title);
+    for (QAction *action : actions) {
+        if (action != nullptr) {
+            toolBar->addAction(action);
+        }
+    }
+    return toolBar;
 }
 
 void MainWindow::updateTabActionStates()
@@ -1493,6 +1535,9 @@ bool MainWindow::openPath(const QString &filePath, const bool addToRecent)
     if (opened && addToRecent) {
         m_workspaceManager.addRecentFile(filePath);
     }
+    if (opened) {
+        updatePropertiesDockVisibility();
+    }
     return opened;
 }
 
@@ -1558,6 +1603,7 @@ void MainWindow::renamePathFromFileBrowser(const QString &path)
     }
     m_workspaceManager.replaceRecentFilePath(fileInfo.absoluteFilePath(), newPath);
     updateFileBrowserRootAfterPathChange(fileInfo.absoluteFilePath(), newPath);
+    updatePropertiesDockVisibility();
 }
 
 void MainWindow::deletePathFromFileBrowser(const QString &path)
@@ -1589,6 +1635,7 @@ void MainWindow::deletePathFromFileBrowser(const QString &path)
     }
     m_workspaceManager.removeRecentFile(fileInfo.absoluteFilePath());
     updateFileBrowserRootAfterPathChange(fileInfo.absoluteFilePath());
+    updatePropertiesDockVisibility();
 }
 
 QDockWidget *MainWindow::createTextDock(const QString &objectName, const QString &title, const QString &body)

@@ -41,8 +41,8 @@ QToolBar QToolButton:pressed, QToolBar QToolButton:checked {
 }
 
 QToolBar QToolButton:disabled {
-    color: #73839a;
-    background-color: #161d2d;
+    color: #9aa9bf;
+    background-color: transparent;
     border-color: transparent;
 }
 
@@ -70,8 +70,13 @@ QPushButton:pressed {
 }
 
 QPushButton:disabled, QComboBox:disabled, QSpinBox:disabled, QLineEdit:disabled, QCheckBox:disabled {
-    color: #73839a;
-    background-color: #121b2b;
+    color: #91a3bc;
+    background-color: #182131;
+}
+
+QPushButton:disabled {
+    background-color: #0f1724;
+    border-color: transparent;
 }
 
 QComboBox::drop-down {

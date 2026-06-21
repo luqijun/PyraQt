@@ -2,33 +2,47 @@
 
 #include "core/modeling/model_property_service.h"
 
+#include <QEvent>
 #include <QFormLayout>
+#include <QFontMetrics>
 #include <QLabel>
+#include <QSizePolicy>
+#include <QVariant>
 #include <QVBoxLayout>
 
 namespace pyraqt::ui {
 
+namespace {
+
+constexpr int kPropertiesMinimumWidth = 280;
+
+}
+
 ModelPropertiesPanel::ModelPropertiesPanel(QWidget *parent)
     : QWidget(parent)
 {
+    setObjectName(QStringLiteral("modelPropertiesPanel"));
+    setMinimumWidth(kPropertiesMinimumWidth);
+
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(12, 12, 12, 12);
 
     auto *form = new QFormLayout();
     form->setContentsMargins(0, 0, 0, 0);
+    form->setFieldGrowthPolicy(QFormLayout::ExpandingFieldsGrow);
 
-    m_stateLabel = new QLabel(this);
-    m_fileLabel = new QLabel(this);
-    m_formatLabel = new QLabel(this);
-    m_boundsLabel = new QLabel(this);
-    m_solidsLabel = new QLabel(this);
-    m_facesLabel = new QLabel(this);
-    m_edgesLabel = new QLabel(this);
-    m_measureLabel = new QLabel(this);
-    m_selectionTypeLabel = new QLabel(this);
-    m_selectionLabel = new QLabel(this);
-    m_selectionBoundsLabel = new QLabel(this);
-    m_selectionMeasureLabel = new QLabel(this);
+    m_stateLabel = createValueLabel(QStringLiteral("propertiesStateValue"));
+    m_fileLabel = createValueLabel(QStringLiteral("propertiesFileValue"));
+    m_formatLabel = createValueLabel(QStringLiteral("propertiesFormatValue"));
+    m_boundsLabel = createValueLabel(QStringLiteral("propertiesBoundsValue"));
+    m_solidsLabel = createValueLabel(QStringLiteral("propertiesSolidsValue"));
+    m_facesLabel = createValueLabel(QStringLiteral("propertiesFacesValue"));
+    m_edgesLabel = createValueLabel(QStringLiteral("propertiesEdgesValue"));
+    m_measureLabel = createValueLabel(QStringLiteral("propertiesMeasureValue"));
+    m_selectionTypeLabel = createValueLabel(QStringLiteral("propertiesSelectionTypeValue"));
+    m_selectionLabel = createValueLabel(QStringLiteral("propertiesSelectionLabelValue"));
+    m_selectionBoundsLabel = createValueLabel(QStringLiteral("propertiesSelectionBoundsValue"));
+    m_selectionMeasureLabel = createValueLabel(QStringLiteral("propertiesSelectionMeasureValue"));
 
     form->addRow(tr("State"), m_stateLabel);
     form->addRow(tr("File"), m_fileLabel);
@@ -94,8 +108,53 @@ void ModelPropertiesPanel::showPlaceholder(const QString &message)
 void ModelPropertiesPanel::setValue(QLabel *label, const QString &value)
 {
     if (label != nullptr) {
-        label->setText(value.isEmpty() ? tr("-") : value);
+        const QString displayValue = value.isEmpty() ? tr("-") : value;
+        label->setProperty("fullText", QVariant(displayValue));
+        label->setToolTip(displayValue);
+        updateDisplayedValue(label);
     }
+}
+
+QLabel *ModelPropertiesPanel::createValueLabel(const QString &objectName)
+{
+    auto *label = new QLabel(this);
+    label->setObjectName(objectName);
+    label->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    label->setWordWrap(false);
+    label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    label->setMinimumWidth(0);
+    label->installEventFilter(this);
+    return label;
+}
+
+bool ModelPropertiesPanel::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event != nullptr
+        && (event->type() == QEvent::Resize || event->type() == QEvent::Show || event->type() == QEvent::LayoutRequest)) {
+        if (auto *label = qobject_cast<QLabel *>(watched)) {
+            updateDisplayedValue(label);
+        }
+    }
+
+    return QWidget::eventFilter(watched, event);
+}
+
+void ModelPropertiesPanel::updateDisplayedValue(QLabel *label)
+{
+    if (label == nullptr) {
+        return;
+    }
+
+    const QString fullText = label->property("fullText").toString();
+    const QString effectiveText = fullText.isEmpty() ? tr("-") : fullText;
+    const int availableWidth = qMax(0, label->contentsRect().width());
+    if (availableWidth <= 0) {
+        label->setText(effectiveText);
+        return;
+    }
+
+    const QFontMetrics metrics(label->font());
+    label->setText(metrics.elidedText(effectiveText, Qt::ElideRight, availableWidth));
 }
 
 } // namespace pyraqt::ui
