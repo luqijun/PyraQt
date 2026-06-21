@@ -26,7 +26,7 @@
 - `PyraApiBridge`: 生成子进程可导入的 `pyra` 模块与 bootstrap 脚本。
 - `ScriptExecutionManager`: 默认在内嵌 CPython 中执行脚本，并保留 `QProcess` 隔离执行用于长任务或兼容场景。
 - `CommandManager`: 统一注册与执行内建命令、C++ 插件命令和 Python 插件命令。
-- `PluginManager`: 扫描应用旁的插件目录、加载动态 C++ 插件、解析 Python 插件清单并持久化启停状态。
+- `PluginManager`: 扫描应用旁和配置项里的插件目录、去重收集插件、校验依赖、加载/卸载动态 C++ 与 Python 插件，并持久化启停状态。
 - `UpdateManager`: 提供检查更新、渠道和自动检查配置。当前只返回开发构建的 `NotConfigured` 占位结果，不访问网络。
 - `CrashRecoveryManager`: 在启动时标记运行中，在正常退出时标记干净退出；下次启动发现异常退出会写入 `crash.log` 并提示恢复信息。
 - `WorkspaceManager`: 管理最近文件、打开文件会话、活动文件和文件浏览器根目录，恢复时过滤不存在的文件。
@@ -39,7 +39,7 @@
 
 PyraQt 的 Python 子系统采用 QGIS 等价设计：Qt 主进程内全局单例 CPython 解释器、共享 `__main__` globals、统一 Runner 获取/释放 GIL，并通过内建 `pyra` 包与全局 `iface` 暴露稳定 API。插件、Console、脚本、宏、表达式函数和 Processing 风格算法共享同一解释器环境，因此变量、导入和插件状态可互通。
 
-Python 插件支持 `plugin.json` 和 QGIS 风格 `metadata.txt`。加载流程为扫描插件目录、导入模块、调用 `classFactory(iface)`、调用插件对象的 `initGui()`，并在命令面板中注册插件命令。`ScriptProcessRunner` 仍保留为隔离执行路径，用于绕开 GIL 或避免长脚本阻塞主进程。
+Python 插件支持 `plugin.json` 和 QGIS 风格 `metadata.txt`。加载流程为扫描插件目录、校验依赖、按 `entry` 创建独立运行时模块、调用 `classFactory(iface)`、调用插件对象的 `initGui()`，并注册清单命令或运行期动态命令。插件卸载时会调用 `unload()`，同时清理由该插件注册的命令、表达式函数和 Processing 算法。`ScriptProcessRunner` 仍保留为隔离执行路径，用于绕开 GIL 或避免长脚本阻塞主进程。
 
 `pyra.commands.register()`、`pyra.macros.load()/trigger()`、`pyra.expressions.register()/evaluate()` 和 `pyra.processing.register()/run()` 会通过 native bridge 回到 C++ 服务层。全局 `iface` 映射到这些 PyraQt API 入口，提供类似 QGIS `qgis.utils.iface` 的 GUI/命令访问面。项目宏默认关闭，需要在设置中显式授权；普通脚本默认内嵌执行，也可切换为隔离子进程执行；`pyra.fs` 文件读写受设置中的文件系统访问开关约束。
 Python Console 提供命令输入、多行执行区、历史记录、stdout/stderr 回流和简版对象检查，所有 Console 命令都在共享解释器中运行。

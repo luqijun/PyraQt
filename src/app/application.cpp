@@ -56,6 +56,7 @@ bool Application::initialize()
         *m_configManager,
         *m_logManager,
         *m_scriptExecutionManager,
+        *m_pythonFeatureManager,
         *m_pythonRuntimeManager);
 
     const bool configLoaded = m_configManager->load();
@@ -66,10 +67,10 @@ bool Application::initialize()
     m_themeManager->setTheme(m_configManager->value(QStringLiteral("theme"), QStringLiteral("light")).toString());
 
     QObject::connect(m_pythonRuntimeManager.get(), &core::PythonRuntimeManager::commandRegistrationRequested, m_commandManager.get(),
-        [this](const QString &id, const QString &title, const QString &description, const QStringList &keywords) {
+        [this](const QString &ownerId, const QString &id, const QString &title, const QString &description, const QStringList &keywords) {
             core::CommandDescriptor descriptor;
             descriptor.id = id;
-            descriptor.ownerId = QStringLiteral("python");
+            descriptor.ownerId = ownerId.isEmpty() ? QStringLiteral("python") : ownerId;
             descriptor.title = title;
             descriptor.description = description;
             descriptor.source = QStringLiteral("Python");
@@ -97,8 +98,8 @@ bool Application::initialize()
             }
         });
     QObject::connect(m_pythonRuntimeManager.get(), &core::PythonRuntimeManager::expressionRegistrationRequested, m_pythonFeatureManager.get(),
-        [this](const QString &name, const QString &code) {
-            if (!m_pythonFeatureManager->registerExpressionFunction(name, code)) {
+        [this](const QString &ownerId, const QString &name, const QString &code) {
+            if (!m_pythonFeatureManager->registerExpressionFunction(name, code, ownerId.isEmpty() ? QStringLiteral("python") : ownerId)) {
                 m_logManager->warning(QStringLiteral("Failed to register Python expression: %1").arg(name));
             }
         });
@@ -112,8 +113,8 @@ bool Application::initialize()
             }
         });
     QObject::connect(m_pythonRuntimeManager.get(), &core::PythonRuntimeManager::processingRegistrationRequested, m_pythonFeatureManager.get(),
-        [this](const QString &id, const QString &code) {
-            if (!m_pythonFeatureManager->registerProcessingAlgorithm(id, code)) {
+        [this](const QString &ownerId, const QString &id, const QString &code) {
+            if (!m_pythonFeatureManager->registerProcessingAlgorithm(id, code, ownerId.isEmpty() ? QStringLiteral("python") : ownerId)) {
                 m_logManager->warning(QStringLiteral("Failed to register Python processing algorithm: %1").arg(id));
             }
         });

@@ -56,6 +56,8 @@ public:
     [[nodiscard]] QString getTraceback();
     [[nodiscard]] QString getErrorText();
     void injectGlobalObject(const QString &name, PyObject *object);
+    void setRegistrationOwnerId(const QString &ownerId);
+    [[nodiscard]] QString registrationOwnerId() const;
 
 signals:
     void interpreterChanged(const QString &path);
@@ -66,13 +68,13 @@ signals:
     void statusMessageRequested(const QString &message);
     void dialogMessageRequested(const QString &message);
     void logMessageRequested(const QString &level, const QString &message);
-    void commandRegistrationRequested(const QString &id, const QString &title, const QString &description, const QStringList &keywords);
+    void commandRegistrationRequested(const QString &ownerId, const QString &id, const QString &title, const QString &description, const QStringList &keywords);
     void filesystemAccessViolation(const QString &operation, const QString &path);
     void macroLoadRequested(const QString &code);
     void macroTriggerRequested(const QString &name);
-    void expressionRegistrationRequested(const QString &name, const QString &code);
+    void expressionRegistrationRequested(const QString &ownerId, const QString &name, const QString &code);
     void expressionEvaluationRequested(const QString &name, const QStringList &arguments);
-    void processingRegistrationRequested(const QString &id, const QString &code);
+    void processingRegistrationRequested(const QString &ownerId, const QString &id, const QString &code);
     void processingRunRequested(const QString &id, const QVariantMap &parameters);
 
 private:
@@ -101,6 +103,7 @@ private:
     PyObject *m_globalDict = nullptr;
     void *m_mainThreadState = nullptr;
     bool m_embeddedInitialized = false;
+    QString m_registrationOwnerId;
 
     friend PyObject *pyraqtNativeEmitStdout(PyObject *, PyObject *);
     friend PyObject *pyraqtNativeEmitStderr(PyObject *, PyObject *);

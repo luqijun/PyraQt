@@ -3,9 +3,14 @@
 #include "core/logging/log_manager.h"
 #include "core/plugin/plugin_manager.h"
 #include "core/scripting/pyra_api_bridge.h"
+#include "core/scripting/python_feature_manager.h"
+#include "core/scripting/python_runner.h"
 #include "core/scripting/python_runtime_manager.h"
 #include "core/scripting/script_execution_manager.h"
 
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QtTest>
 
 #include <algorithm>
@@ -18,10 +23,12 @@ class PluginServicesTest final : public QObject {
 private slots:
     void commandRegistration();
     void pluginDiscovery();
+    void pluginDiscoveryIncludesConfiguredSearchPaths();
     void pythonPluginLifecycleLoadsInProcess();
     void pythonPluginDisableUnloadsInProcess();
     void pythonPluginReloadKeepsPluginActive();
     void disablePluginPersists();
+    void pluginDependencyFailureIsReported();
 };
 
 void PluginServicesTest::commandRegistration()
@@ -44,14 +51,58 @@ void PluginServicesTest::pluginDiscovery()
     pyraqt::core::LogManager logManager;
     QVERIFY(logManager.initialize());
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
 
     pluginManager.scanPlugins();
     const auto plugins = pluginManager.plugins();
     QVERIFY(!plugins.isEmpty());
+}
+
+void PluginServicesTest::pluginDiscoveryIncludesConfiguredSearchPaths()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pythonRoot = QDir(dir.path()).filePath(QStringLiteral("python/custom_test_plugin"));
+    QVERIFY(QDir().mkpath(pythonRoot));
+
+    QFile manifest(QDir(pythonRoot).filePath(QStringLiteral("plugin.json")));
+    QVERIFY(manifest.open(QIODevice::WriteOnly | QIODevice::Text));
+    manifest.write(R"({
+  "id": "custom_test_plugin",
+  "name": "Custom Test Plugin",
+  "version": "0.1.0",
+  "description": "Discovered from configured path.",
+  "entry": "__init__.py"
+})");
+    manifest.close();
+
+    QFile entry(QDir(pythonRoot).filePath(QStringLiteral("__init__.py")));
+    QVERIFY(entry.open(QIODevice::WriteOnly | QIODevice::Text));
+    entry.write("def classFactory(iface):\n    return None\n");
+    entry.close();
+
+    pyraqt::core::ConfigManager configManager;
+    configManager.setValue(QStringLiteral("plugins.search_paths"), QStringList{dir.path()});
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+
+    pluginManager.scanPlugins();
+    const auto plugins = pluginManager.plugins();
+    QVERIFY(std::any_of(plugins.begin(), plugins.end(), [](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.id == QStringLiteral("custom_test_plugin");
+    }));
 }
 
 void PluginServicesTest::pythonPluginLifecycleLoadsInProcess()
@@ -60,10 +111,12 @@ void PluginServicesTest::pythonPluginLifecycleLoadsInProcess()
     pyraqt::core::LogManager logManager;
     QVERIFY(logManager.initialize());
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
 
     pluginManager.scanPlugins();
     pluginManager.loadEnabledPlugins();
@@ -79,10 +132,12 @@ void PluginServicesTest::pythonPluginReloadKeepsPluginActive()
     pyraqt::core::LogManager logManager;
     QVERIFY(logManager.initialize());
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
 
     pluginManager.scanPlugins();
     pluginManager.loadEnabledPlugins();
@@ -107,10 +162,12 @@ void PluginServicesTest::pythonPluginDisableUnloadsInProcess()
     pyraqt::core::LogManager logManager;
     QVERIFY(logManager.initialize());
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
 
     pluginManager.scanPlugins();
     pluginManager.loadEnabledPlugins();
@@ -135,16 +192,65 @@ void PluginServicesTest::disablePluginPersists()
     pyraqt::core::LogManager logManager;
     QVERIFY(logManager.initialize());
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
     pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
     pyraqt::core::CommandManager commandManager;
-    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, runtimeManager);
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
 
     pluginManager.scanPlugins();
     const auto plugins = pluginManager.plugins();
     QVERIFY(!plugins.isEmpty());
     QVERIFY(pluginManager.setPluginEnabled(plugins.first().id, false));
     QVERIFY(configManager.value(QStringLiteral("plugins.disabled_ids")).toStringList().contains(plugins.first().id));
+}
+
+void PluginServicesTest::pluginDependencyFailureIsReported()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+    const QString pluginDir = QDir(dir.path()).filePath(QStringLiteral("python/dependent_test_plugin"));
+    QVERIFY(QDir().mkpath(pluginDir));
+
+    QFile manifest(QDir(pluginDir).filePath(QStringLiteral("plugin.json")));
+    QVERIFY(manifest.open(QIODevice::WriteOnly | QIODevice::Text));
+    manifest.write(R"({
+  "id": "dependent_test_plugin",
+  "name": "Dependent Test Plugin",
+  "version": "0.1.0",
+  "description": "Fails when dependency is missing.",
+  "entry": "__init__.py",
+  "dependencies": ["missing_plugin"]
+})");
+    manifest.close();
+
+    QFile entry(QDir(pluginDir).filePath(QStringLiteral("__init__.py")));
+    QVERIFY(entry.open(QIODevice::WriteOnly | QIODevice::Text));
+    entry.write("def classFactory(iface):\n    return None\n");
+    entry.close();
+
+    pyraqt::core::ConfigManager configManager;
+    configManager.setValue(QStringLiteral("plugins.search_paths"), QStringList{dir.path()});
+    pyraqt::core::LogManager logManager;
+    QVERIFY(logManager.initialize());
+    pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
+    pyraqt::core::PythonRunner runner(runtimeManager);
+    pyraqt::core::PythonFeatureManager featureManager(runtimeManager, runner);
+    pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
+    pyraqt::core::ScriptExecutionManager executionManager(runtimeManager, bridge);
+    pyraqt::core::CommandManager commandManager;
+    pyraqt::core::PluginManager pluginManager(commandManager, configManager, logManager, executionManager, featureManager, runtimeManager);
+
+    pluginManager.scanPlugins();
+    pluginManager.loadEnabledPlugins();
+    const auto plugins = pluginManager.plugins();
+    auto it = std::find_if(plugins.begin(), plugins.end(), [](const pyraqt::core::PluginInfo &plugin) {
+        return plugin.id == QStringLiteral("dependent_test_plugin");
+    });
+    QVERIFY(it != plugins.end());
+    QVERIFY(!it->loaded);
+    QVERIFY(it->error.contains(QStringLiteral("Missing dependency")));
 }
 
 } // namespace

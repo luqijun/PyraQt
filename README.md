@@ -60,6 +60,18 @@ ctest --preset linux-debug-qt-auto
 示例脚本位于 [scripts](/home/numbat/Projects/Misc/PyraQt/scripts)。
 Python 插件示例位于 [plugins](/home/numbat/Projects/Misc/PyraQt/plugins)。
 Python 插件推荐实现 `classFactory(iface)`，返回带 `initGui()` / `unload()` 的插件对象；旧的 `plugin.json` 命令式插件继续兼容。
+当前插件管理器支持：
+
+- 扫描应用旁插件目录和 `plugins.search_paths` 里的额外目录，并自动去重
+- Python / C++ 插件启用、禁用、重新加载和依赖校验
+- Python 插件在 `initGui()` 中动态注册命令、表达式函数和 Processing 算法，并在卸载时按插件归属清理
+
+仓库内新增了 3 个不同方向的 Python 插件示例：
+
+- `runtime_command_plugin`：演示 `initGui()` 动态注册命令和生命周期日志
+- `analysis_tools_plugin`：演示表达式函数与 Processing 算法注册
+- `dependent_workflow_plugin`：演示插件依赖、运行期命令协作和 `plugin.json` 脚本命令
+
 Console 中可直接使用 `pyra.macros`、`pyra.expressions` 和 `pyra.processing` 注册并调用 PyraQt 领域的宏、表达式函数和 Processing 风格算法，也可以通过全局 `iface` 访问同等入口。
 菜单 `Tools > Python Tools` 提供同等图形入口；Python Console 的 `Inspect` 按钮可查看当前共享解释器全局对象。
 脚本编辑器和 Python Console 默认启用代码提示；可在 Settings 的 Python 页面调整启用状态和触发字符数。

@@ -7,6 +7,7 @@
 #include <QHeaderView>
 #include <QPushButton>
 #include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QVBoxLayout>
 
 namespace pyraqt::ui {
@@ -40,6 +41,7 @@ PluginManagerPanel::PluginManagerPanel(pyraqt::core::PluginManager &pluginManage
 void PluginManagerPanel::refreshTable()
 {
     const auto plugins = m_pluginManager.plugins();
+    m_table->clearContents();
     m_table->setRowCount(plugins.size());
 
     for (int row = 0; row < plugins.size(); ++row) {
@@ -54,9 +56,19 @@ void PluginManagerPanel::refreshTable()
         m_table->setItem(row, 1, new QTableWidgetItem(plugin.name));
         m_table->setItem(row, 2, new QTableWidgetItem(plugin.type));
         m_table->setItem(row, 3, new QTableWidgetItem(plugin.version));
-        m_table->setItem(row, 4, new QTableWidgetItem(plugin.loaded ? tr("Loaded") : tr("Discovered")));
+        QString status = tr("Discovered");
+        if (!plugin.enabled) {
+            status = tr("Disabled");
+        } else if (!plugin.error.isEmpty()) {
+            status = tr("Error");
+        } else if (plugin.loaded && plugin.active) {
+            status = tr("Active");
+        } else if (plugin.loaded) {
+            status = tr("Loaded");
+        }
+        m_table->setItem(row, 4, new QTableWidgetItem(status));
         auto *reloadButton = new QPushButton(tr("Reload"), m_table);
-        reloadButton->setEnabled(plugin.enabled && plugin.type == QStringLiteral("python"));
+        reloadButton->setEnabled(plugin.enabled && (plugin.type == QStringLiteral("python") || plugin.type == QStringLiteral("cpp")));
         connect(reloadButton, &QPushButton::clicked, this, [this, plugin] {
             m_pluginManager.reloadPlugin(plugin.id);
         });

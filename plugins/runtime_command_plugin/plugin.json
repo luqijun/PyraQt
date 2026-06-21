@@ -1,0 +1,8 @@
+{
+  "id": "runtime_command_plugin",
+  "name": "Runtime Command Plugin",
+  "version": "0.1.0",
+  "description": "Registers plugin commands dynamically from initGui and reports lifecycle state.",
+  "entry": "__init__.py",
+  "enabledByDefault": true
+}

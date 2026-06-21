@@ -22,12 +22,14 @@ public:
     ScriptResult triggerMacro(const QString &name);
     bool unloadMacros();
 
-    bool registerExpressionFunction(const QString &name, const QString &code);
+    bool registerExpressionFunction(const QString &name, const QString &code, const QString &ownerId = QStringLiteral("python"));
     ScriptResult evaluateExpressionFunction(const QString &name, const QStringList &arguments = {});
+    void unregisterExpressionFunctions(const QString &ownerId);
 
-    bool registerProcessingAlgorithm(const QString &id, const QString &code);
+    bool registerProcessingAlgorithm(const QString &id, const QString &code, const QString &ownerId = QStringLiteral("python"));
     ScriptResult runProcessingAlgorithm(const QString &id, const QVariantMap &parameters = {});
     void runProcessingAlgorithmAsync(const QString &id, const QVariantMap &parameters = {});
+    void unregisterProcessingAlgorithms(const QString &ownerId);
 
 signals:
     void processingStarted(const QString &id);
@@ -40,7 +42,9 @@ private:
     PythonRuntimeManager &m_runtimeManager;
     PythonRunner &m_runner;
     QMap<QString, QString> m_expressionFunctions;
+    QMap<QString, QString> m_expressionOwners;
     QMap<QString, QString> m_processingAlgorithms;
+    QMap<QString, QString> m_processingOwners;
 };
 
 } // namespace pyraqt::core

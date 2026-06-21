@@ -29,6 +29,7 @@ struct PluginInfo {
     QString error;
     QString loadError;
     QString moduleName;
+    QString runtimeModuleName;
     QStringList dependencies;
     QMap<QString, QString> metadata;
     bool active = false;

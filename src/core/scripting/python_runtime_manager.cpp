@@ -693,6 +693,16 @@ void PythonRuntimeManager::injectGlobalObject(const QString &name, PyObject *obj
     PyDict_SetItemString(m_globalDict, name.toUtf8().constData(), object);
 }
 
+void PythonRuntimeManager::setRegistrationOwnerId(const QString &ownerId)
+{
+    m_registrationOwnerId = ownerId;
+}
+
+QString PythonRuntimeManager::registrationOwnerId() const
+{
+    return m_registrationOwnerId;
+}
+
 bool PythonRuntimeManager::appendPyraNativeModule()
 {
     static bool appended = false;
@@ -954,7 +964,7 @@ void PythonRuntimeManager::emitCommandRegistrationFromPython(
     const QString &description,
     const QStringList &keywords)
 {
-    emit commandRegistrationRequested(id, title, description, keywords);
+    emit commandRegistrationRequested(m_registrationOwnerId, id, title, description, keywords);
 }
 
 bool PythonRuntimeManager::isFileSystemAccessAllowedFromPython(const QString &operation, const QString &path)
@@ -978,7 +988,7 @@ void PythonRuntimeManager::emitMacroTriggerFromPython(const QString &name)
 
 void PythonRuntimeManager::emitExpressionRegistrationFromPython(const QString &name, const QString &code)
 {
-    emit expressionRegistrationRequested(name, code);
+    emit expressionRegistrationRequested(m_registrationOwnerId, name, code);
 }
 
 void PythonRuntimeManager::emitExpressionEvaluationFromPython(const QString &name, const QStringList &arguments)
@@ -988,7 +998,7 @@ void PythonRuntimeManager::emitExpressionEvaluationFromPython(const QString &nam
 
 void PythonRuntimeManager::emitProcessingRegistrationFromPython(const QString &id, const QString &code)
 {
-    emit processingRegistrationRequested(id, code);
+    emit processingRegistrationRequested(m_registrationOwnerId, id, code);
 }
 
 void PythonRuntimeManager::emitProcessingRunFromPython(const QString &id, const QVariantMap &parameters)

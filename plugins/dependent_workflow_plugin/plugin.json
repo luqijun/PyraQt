@@ -1,0 +1,18 @@
+{
+  "id": "dependent_workflow_plugin",
+  "name": "Dependent Workflow Plugin",
+  "version": "0.1.0",
+  "description": "Depends on runtime_command_plugin and demonstrates dependency-aware startup.",
+  "entry": "__init__.py",
+  "enabledByDefault": true,
+  "dependencies": ["runtime_command_plugin"],
+  "commands": [
+    {
+      "id": "dependent_workflow_plugin.run_report",
+      "title": "Dependent Workflow Plugin: Run Report",
+      "description": "Run a small workflow report script through the command-based plugin path.",
+      "script": "report.py",
+      "keywords": ["plugin", "workflow", "report"]
+    }
+  ]
+}

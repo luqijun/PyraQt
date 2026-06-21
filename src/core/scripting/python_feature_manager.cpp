@@ -52,11 +52,12 @@ bool PythonFeatureManager::unloadMacros()
     return m_runner.runCode(QStringLiteral("import sys\nsys.modules.pop('proj_macros_mod', None)\n")).success;
 }
 
-bool PythonFeatureManager::registerExpressionFunction(const QString &name, const QString &code)
+bool PythonFeatureManager::registerExpressionFunction(const QString &name, const QString &code, const QString &ownerId)
 {
     const bool ok = m_runner.runCode(code).success;
     if (ok) {
         m_expressionFunctions.insert(name, code);
+        m_expressionOwners.insert(name, ownerId);
     }
     return ok;
 }
@@ -70,11 +71,24 @@ ScriptResult PythonFeatureManager::evaluateExpressionFunction(const QString &nam
     return m_runner.eval(QStringLiteral("%1(%2)").arg(name, quotedArguments.join(QStringLiteral(", "))));
 }
 
-bool PythonFeatureManager::registerProcessingAlgorithm(const QString &id, const QString &code)
+void PythonFeatureManager::unregisterExpressionFunctions(const QString &ownerId)
+{
+    for (auto it = m_expressionOwners.begin(); it != m_expressionOwners.end();) {
+        if (it.value() != ownerId) {
+            ++it;
+            continue;
+        }
+        m_expressionFunctions.remove(it.key());
+        it = m_expressionOwners.erase(it);
+    }
+}
+
+bool PythonFeatureManager::registerProcessingAlgorithm(const QString &id, const QString &code, const QString &ownerId)
 {
     const bool ok = m_runner.runCode(code).success;
     if (ok) {
         m_processingAlgorithms.insert(id, code);
+        m_processingOwners.insert(id, ownerId);
     }
     return ok;
 }
@@ -96,6 +110,18 @@ void PythonFeatureManager::runProcessingAlgorithmAsync(const QString &id, const 
         const ScriptResult result = runProcessingAlgorithm(id, parameters);
         emit processingFinished(id, result);
     });
+}
+
+void PythonFeatureManager::unregisterProcessingAlgorithms(const QString &ownerId)
+{
+    for (auto it = m_processingOwners.begin(); it != m_processingOwners.end();) {
+        if (it.value() != ownerId) {
+            ++it;
+            continue;
+        }
+        m_processingAlgorithms.remove(it.key());
+        it = m_processingOwners.erase(it);
+    }
 }
 
 QString PythonFeatureManager::quote(const QString &value) const

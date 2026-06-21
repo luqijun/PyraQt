@@ -108,6 +108,8 @@ void ScriptingServicesTest::pyraCommandRegistrationExecutesCallback()
                 "pyra.commands.register('test.command', _test_command, title='Test Command')\n"))
                 .success);
     QCOMPARE(commandSpy.count(), 1);
+    QCOMPARE(commandSpy.at(0).at(0).toString(), QString());
+    QCOMPARE(commandSpy.at(0).at(1).toString(), QStringLiteral("test.command"));
     QVERIFY(runner.runCode(QStringLiteral("pyra.commands.run('test.command')")).success);
     QCOMPARE(runner.eval(QStringLiteral("command_value")).resultText, QStringLiteral("ran"));
 }
@@ -135,6 +137,10 @@ void ScriptingServicesTest::pyraFeatureBridgeSignals()
     QCOMPARE(macroTriggerSpy.count(), 1);
     QCOMPARE(expressionSpy.count(), 1);
     QCOMPARE(processingSpy.count(), 1);
+    QCOMPARE(expressionSpy.at(0).at(0).toString(), QString());
+    QCOMPARE(expressionSpy.at(0).at(1).toString(), QStringLiteral("identity"));
+    QCOMPARE(processingSpy.at(0).at(0).toString(), QString());
+    QCOMPARE(processingSpy.at(0).at(1).toString(), QStringLiteral("alg"));
 }
 
 void ScriptingServicesTest::macroExpressionAndProcessingFeatures()

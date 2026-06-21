@@ -1,0 +1,9 @@
+{
+  "id": "analysis_tools_plugin",
+  "name": "Analysis Tools Plugin",
+  "version": "0.1.0",
+  "description": "Registers expression and processing helpers during plugin startup.",
+  "entry": "__init__.py",
+  "enabledByDefault": true,
+  "hasProcessingProvider": true
+}
