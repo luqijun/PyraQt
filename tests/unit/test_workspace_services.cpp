@@ -1,7 +1,7 @@
 #include "core/config/config_manager.h"
 #include "core/logging/log_manager.h"
 #include "core/modeling/model_import_manager.h"
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
 #include "core/update/update_manager.h"
 #include "core/workspace/workspace_manager.h"
 

@@ -1,7 +1,7 @@
 #include "ui/dialogs/python_tools_dialog.h"
 
-#include "core/scripting/python_runtime_manager.h"
-#include "core/scripting/script_execution_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
+#include "core/scripting/python/script_execution_manager.h"
 
 #include <QEvent>
 #include <QDialogButtonBox>

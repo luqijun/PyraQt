@@ -5,9 +5,9 @@
 #include "core/logging/log_manager.h"
 #include "core/plugin/iplugin.h"
 #include "core/plugin/plugin_context.h"
-#include "core/scripting/python_feature_manager.h"
-#include "core/scripting/python_runtime_manager.h"
-#include "core/scripting/script_execution_manager.h"
+#include "core/scripting/python/python_feature_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
+#include "core/scripting/python/script_execution_manager.h"
 
 #include <QCoreApplication>
 #include <QDir>

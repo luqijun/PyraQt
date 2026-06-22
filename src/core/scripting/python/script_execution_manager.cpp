@@ -1,9 +1,9 @@
-#include "core/scripting/script_execution_manager.h"
+#include "core/scripting/python/script_execution_manager.h"
 
-#include "core/scripting/pyra_api_bridge.h"
-#include "core/scripting/python_runner.h"
-#include "core/scripting/python_runtime_manager.h"
-#include "core/scripting/script_process_runner.h"
+#include "core/scripting/python/pyra_api_bridge.h"
+#include "core/scripting/python/python_runner.h"
+#include "core/scripting/python/python_runtime_manager.h"
+#include "core/scripting/python/script_process_runner.h"
 
 #include <QFile>
 #include <QFileInfo>

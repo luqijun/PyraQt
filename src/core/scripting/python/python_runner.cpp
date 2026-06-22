@@ -1,6 +1,6 @@
-#include "core/scripting/python_runner.h"
+#include "core/scripting/python/python_runner.h"
 
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
 
 namespace pyraqt::core {
 

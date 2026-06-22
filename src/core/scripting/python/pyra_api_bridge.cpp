@@ -1,7 +1,7 @@
-#include "core/scripting/pyra_api_bridge.h"
+#include "core/scripting/python/pyra_api_bridge.h"
 
 #include "core/logging/log_manager.h"
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
 
 #include <QDir>
 #include <QFile>

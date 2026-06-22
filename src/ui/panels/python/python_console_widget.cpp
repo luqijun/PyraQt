@@ -1,9 +1,9 @@
 #include "ui/panels/python/python_console_widget.h"
 
-#include "core/scripting/python_completion_provider.h"
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_completion_provider.h"
+#include "core/scripting/python/python_runtime_manager.h"
 #include "core/scripting/script_result.h"
-#include "core/scripting/script_execution_manager.h"
+#include "core/scripting/python/script_execution_manager.h"
 #include "core/theme/theme_manager.h"
 #include "ui/common/icon_utils.h"
 #include "ui/common/python_completion_line_edit.h"

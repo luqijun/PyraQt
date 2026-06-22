@@ -2,7 +2,7 @@
 
 #include "core/modeling/model_import_manager.h"
 #include "core/modeling/model_types.h"
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
 #include "core/theme/theme_manager.h"
 #include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/model_document_widget.h"

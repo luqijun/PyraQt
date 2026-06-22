@@ -1,4 +1,4 @@
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
 
 #include "core/config/config_manager.h"
 

@@ -1,7 +1,7 @@
-#include "core/scripting/python_feature_manager.h"
+#include "core/scripting/python/python_feature_manager.h"
 
-#include "core/scripting/python_runner.h"
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runner.h"
+#include "core/scripting/python/python_runtime_manager.h"
 
 #include <QMetaType>
 #include <QTimer>

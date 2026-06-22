@@ -2,7 +2,7 @@
 
 #include "core/config/config_manager.h"
 #include "core/i18n/i18n_manager.h"
-#include "core/scripting/python_runtime_manager.h"
+#include "core/scripting/python/python_runtime_manager.h"
 #include "core/theme/theme_manager.h"
 #include "core/update/update_manager.h"
 #include "core/workspace/workspace_manager.h"

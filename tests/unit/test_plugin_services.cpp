@@ -2,11 +2,11 @@
 #include "core/config/config_manager.h"
 #include "core/logging/log_manager.h"
 #include "core/plugin/plugin_manager.h"
-#include "core/scripting/pyra_api_bridge.h"
-#include "core/scripting/python_feature_manager.h"
-#include "core/scripting/python_runner.h"
-#include "core/scripting/python_runtime_manager.h"
-#include "core/scripting/script_execution_manager.h"
+#include "core/scripting/python/pyra_api_bridge.h"
+#include "core/scripting/python/python_feature_manager.h"
+#include "core/scripting/python/python_runner.h"
+#include "core/scripting/python/python_runtime_manager.h"
+#include "core/scripting/python/script_execution_manager.h"
 
 #include <QDir>
 #include <QFile>

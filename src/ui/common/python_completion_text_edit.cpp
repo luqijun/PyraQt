@@ -1,6 +1,6 @@
 #include "ui/common/python_completion_text_edit.h"
 
-#include "core/scripting/python_completion_provider.h"
+#include "core/scripting/python/python_completion_provider.h"
 
 #include <QAbstractItemView>
 #include <QCompleter>

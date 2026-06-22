@@ -83,20 +83,20 @@ add_library(pyraqt_core STATIC
     src/core/plugin/plugin_types.h
     src/core/runtime/crash_recovery_manager.cpp
     src/core/runtime/crash_recovery_manager.h
-    src/core/scripting/pyra_api_bridge.cpp
-    src/core/scripting/pyra_api_bridge.h
-    src/core/scripting/python_completion_provider.cpp
-    src/core/scripting/python_completion_provider.h
-    src/core/scripting/python_feature_manager.cpp
-    src/core/scripting/python_feature_manager.h
-    src/core/scripting/python_runner.cpp
-    src/core/scripting/python_runner.h
-    src/core/scripting/python_runtime_manager.cpp
-    src/core/scripting/python_runtime_manager.h
-    src/core/scripting/script_execution_manager.cpp
-    src/core/scripting/script_execution_manager.h
-    src/core/scripting/script_process_runner.cpp
-    src/core/scripting/script_process_runner.h
+    src/core/scripting/python/pyra_api_bridge.cpp
+    src/core/scripting/python/pyra_api_bridge.h
+    src/core/scripting/python/python_completion_provider.cpp
+    src/core/scripting/python/python_completion_provider.h
+    src/core/scripting/python/python_feature_manager.cpp
+    src/core/scripting/python/python_feature_manager.h
+    src/core/scripting/python/python_runner.cpp
+    src/core/scripting/python/python_runner.h
+    src/core/scripting/python/python_runtime_manager.cpp
+    src/core/scripting/python/python_runtime_manager.h
+    src/core/scripting/python/script_execution_manager.cpp
+    src/core/scripting/python/script_execution_manager.h
+    src/core/scripting/python/script_process_runner.cpp
+    src/core/scripting/python/script_process_runner.h
     src/core/scripting/script_result.h
     src/core/scripting/script_session.h
     src/core/theme/theme_manager.cpp
