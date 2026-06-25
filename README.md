@@ -15,7 +15,7 @@ PyraQt 是一个面向专业开发者的现代 Qt 桌面应用模板框架。当
 - 可选 OCCT 3D 模型浏览器（`.stp/.step/.brep`）
 - QGIS 风格主进程内嵌 CPython 运行时、共享全局命名空间和统一 Runner
 - 可选 Python 子进程隔离执行与停止
-- 内嵌 `pyra` / `iface` API：`app`、`ui`、`fs`、`log`、`commands`、`workspace`、`model`、`plugins`、`processing`、`macros`、`expressions`
+- 内嵌 `pyra` / `iface` API：`app`、`ui`、`fs`、`log`、`commands`、`workspace`、`cad`、`plugins`、`processing`、`macros`、`expressions`
 - C++ 动态插件与 QGIS 风格 `classFactory(iface)` Python 插件
 - 交互式 Python Console、stdout/stderr 回流、命令历史和多行执行区
 - Python Tools 对话框，用于加载/触发宏、注册/执行表达式函数和 Processing 风格算法
@@ -101,7 +101,7 @@ Linux 下会在构建目录生成 `.deb`、`.tar.gz` 和 `.zip`。CI 的 Linux Q
 - `src/core/runtime`: 运行状态、异常退出检测与恢复提示
 - `src/core/workspace`: 最近文件、工作区会话与文件浏览根目录
 - `src/ui`: 主窗口和停靠面板
-- `src/core/modeling`: OCCT 文件导入、模型统计与属性提取
+- `src/core/cad`: OCCT 文件导入、CAD 文档统计与属性提取
 - `resources`: QSS 主题与翻译资源
 - `tests`: QtTest 单元测试
 

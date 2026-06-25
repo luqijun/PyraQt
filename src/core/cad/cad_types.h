@@ -6,39 +6,39 @@
 
 namespace pyraqt::core {
 
-struct ModelOcctData;
+struct CadOcctData;
 
-enum class ModelFormat {
+enum class CadFormat {
     Unknown,
     Step,
     Brep,
 };
 
-enum class ModelDisplayMode {
+enum class CadDisplayMode {
     Wireframe,
     Shaded,
     ShadedWithEdges,
 };
 
-enum class ModelSelectionMode {
+enum class CadSelectionMode {
     Shape,
     Face,
     Edge,
     Vertex,
 };
 
-enum class ModelSelectionKind {
+enum class CadSelectionKind {
     None,
-    Model,
+    Document,
     Shape,
     Face,
     Edge,
     Vertex,
 };
 
-struct ModelImportSummary {
+struct CadImportSummary {
     QString filePath;
-    ModelFormat format = ModelFormat::Unknown;
+    CadFormat format = CadFormat::Unknown;
     bool isValid = false;
     int rootShapeCount = 0;
     int solidCount = 0;
@@ -49,12 +49,12 @@ struct ModelImportSummary {
     QString errorMessage;
 };
 
-struct ModelPropertyItem {
+struct CadPropertyItem {
     QString label;
     QString value;
 };
 
-struct ModelMeasurementSummary {
+struct CadMeasurementSummary {
     bool hasLength = false;
     double length = 0.0;
     bool hasArea = false;
@@ -64,26 +64,26 @@ struct ModelMeasurementSummary {
     QString centerOfMassText;
 };
 
-struct ModelDocument {
+struct CadDocument {
     QString filePath;
-    ModelFormat format = ModelFormat::Unknown;
+    CadFormat format = CadFormat::Unknown;
     bool isValid = false;
-    ModelImportSummary summary;
-    ModelDisplayMode displayMode = ModelDisplayMode::ShadedWithEdges;
-    ModelSelectionMode selectionMode = ModelSelectionMode::Face;
+    CadImportSummary summary;
+    CadDisplayMode displayMode = CadDisplayMode::ShadedWithEdges;
+    CadSelectionMode selectionMode = CadSelectionMode::Face;
     QString statusMessage;
     QString boundingBoxText;
     QStringList viewModes;
-    ModelMeasurementSummary measurements;
-    std::shared_ptr<ModelOcctData> occtData;
+    CadMeasurementSummary measurements;
+    std::shared_ptr<CadOcctData> occtData;
 };
 
-struct ModelSelectionInfo {
-    ModelSelectionKind kind = ModelSelectionKind::None;
+struct CadSelectionInfo {
+    CadSelectionKind kind = CadSelectionKind::None;
     QString label;
     QString boundingBoxText;
     QString measureText;
-    ModelMeasurementSummary measurements;
+    CadMeasurementSummary measurements;
     bool hasSelection = false;
 };
 

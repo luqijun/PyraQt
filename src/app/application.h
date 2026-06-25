@@ -10,7 +10,7 @@ class CommandManager;
 class ConfigManager;
 class I18nManager;
 class LogManager;
-class ModelImportManager;
+class CadImportManager;
 class PyraApiBridge;
 class PluginManager;
 class PythonFeatureManager;
@@ -44,7 +44,7 @@ private:
     QApplication &m_qtApplication;
     std::unique_ptr<core::ConfigManager> m_configManager;
     std::unique_ptr<core::LogManager> m_logManager;
-    std::unique_ptr<core::ModelImportManager> m_modelImportManager;
+    std::unique_ptr<core::CadImportManager> m_cadImportManager;
     std::unique_ptr<core::ThemeManager> m_themeManager;
     std::unique_ptr<core::I18nManager> m_i18nManager;
     std::unique_ptr<core::PythonRuntimeManager> m_pythonRuntimeManager;

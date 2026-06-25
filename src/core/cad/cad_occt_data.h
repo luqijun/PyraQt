@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/modeling/model_types.h"
+#include "core/cad/cad_types.h"
 
 #if PYRAQT_HAS_OCCT
 #include <AIS_Shape.hxx>
@@ -10,7 +10,7 @@
 
 namespace pyraqt::core {
 
-struct ModelOcctData {
+struct CadOcctData {
 #if PYRAQT_HAS_OCCT
     TopoDS_Shape rootShape;
     Bnd_Box boundingBox;

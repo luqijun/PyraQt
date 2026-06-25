@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/modeling/model_types.h"
+#include "core/cad/cad_types.h"
 
 #include <QWidget>
 
@@ -10,14 +10,14 @@ class QFormLayout;
 
 namespace pyraqt::ui {
 
-class ModelPropertiesPanel final : public QWidget {
+class CadPropertiesPanel final : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ModelPropertiesPanel(QWidget *parent = nullptr);
+    explicit CadPropertiesPanel(QWidget *parent = nullptr);
 
-    void setModelDocument(const pyraqt::core::ModelDocument &document);
-    void setSelectionInfo(const pyraqt::core::ModelSelectionInfo &selection);
+    void setCadDocument(const pyraqt::core::CadDocument &document);
+    void setSelectionInfo(const pyraqt::core::CadSelectionInfo &selection);
     void clearSelection();
     void showPlaceholder(const QString &message);
 

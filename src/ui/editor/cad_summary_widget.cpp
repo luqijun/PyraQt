@@ -1,4 +1,4 @@
-#include "ui/editor/model_summary_widget.h"
+#include "ui/editor/cad_summary_widget.h"
 
 #include <QEvent>
 #include <QFormLayout>
@@ -9,14 +9,14 @@
 namespace pyraqt::ui {
 namespace {
 
-QString formatText(const pyraqt::core::ModelFormat format)
+QString formatText(const pyraqt::core::CadFormat format)
 {
     switch (format) {
-    case pyraqt::core::ModelFormat::Step:
+    case pyraqt::core::CadFormat::Step:
         return QStringLiteral("STEP");
-    case pyraqt::core::ModelFormat::Brep:
+    case pyraqt::core::CadFormat::Brep:
         return QStringLiteral("BREP");
-    case pyraqt::core::ModelFormat::Unknown:
+    case pyraqt::core::CadFormat::Unknown:
     default:
         return QStringLiteral("Unknown");
     }
@@ -29,7 +29,7 @@ QString countText(const int value)
 
 } // namespace
 
-ModelSummaryWidget::ModelSummaryWidget(QWidget *parent)
+CadSummaryWidget::CadSummaryWidget(QWidget *parent)
     : QWidget(parent)
 {
     auto *layout = new QVBoxLayout(this);
@@ -69,7 +69,7 @@ ModelSummaryWidget::ModelSummaryWidget(QWidget *parent)
     setSummary({});
 }
 
-void ModelSummaryWidget::setSummary(const pyraqt::core::ModelImportSummary &summary)
+void CadSummaryWidget::setSummary(const pyraqt::core::CadImportSummary &summary)
 {
     m_summary = summary;
     m_fileValueLabel->setText(summary.filePath.isEmpty() ? tr("(unspecified)") : summary.filePath);
@@ -84,12 +84,12 @@ void ModelSummaryWidget::setSummary(const pyraqt::core::ModelImportSummary &summ
     m_errorViewer->setPlainText(summary.errorMessage.isEmpty() ? tr("No import errors.") : summary.errorMessage);
 }
 
-pyraqt::core::ModelImportSummary ModelSummaryWidget::summary() const
+pyraqt::core::CadImportSummary CadSummaryWidget::summary() const
 {
     return m_summary;
 }
 
-void ModelSummaryWidget::changeEvent(QEvent *event)
+void CadSummaryWidget::changeEvent(QEvent *event)
 {
     if (event != nullptr && event->type() == QEvent::LanguageChange) {
         retranslateUi();
@@ -98,7 +98,7 @@ void ModelSummaryWidget::changeEvent(QEvent *event)
     QWidget::changeEvent(event);
 }
 
-void ModelSummaryWidget::retranslateUi()
+void CadSummaryWidget::retranslateUi()
 {
     if (m_summaryLayout != nullptr) {
         m_summaryLayout->setWidget(0, QFormLayout::LabelRole, new QLabel(tr("File"), this));

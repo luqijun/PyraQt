@@ -1,6 +1,6 @@
 #include "core/config/config_manager.h"
 #include "core/logging/log_manager.h"
-#include "core/modeling/model_import_manager.h"
+#include "core/cad/cad_import_manager.h"
 #include "core/scripting/python/python_runtime_manager.h"
 #include "core/update/update_manager.h"
 #include "core/workspace/workspace_manager.h"
@@ -128,7 +128,7 @@ void WorkspaceServicesTest::sessionKeepsSupportedModelFiles()
 {
     pyraqt::core::ConfigManager configManager;
     pyraqt::core::WorkspaceManager workspaceManager(configManager);
-    pyraqt::core::ModelImportManager importManager;
+    pyraqt::core::CadImportManager importManager;
     QTemporaryDir dir;
     QVERIFY(dir.isValid());
 

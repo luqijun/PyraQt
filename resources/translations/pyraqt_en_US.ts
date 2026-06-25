@@ -21,7 +21,7 @@
     </message>
 </context>
 <context>
-    <name>ModelPropertiesPanel</name>
+    <name>CadPropertiesPanel</name>
     <message>
         <source>Select a model to inspect its properties.</source>
         <translation>Select a model to inspect its properties.</translation>
@@ -202,7 +202,7 @@
     </message>
 </context>
 <context>
-    <name>pyraqt::core::ModelImportManager</name>
+    <name>pyraqt::core::CadImportManager</name>
     <message>
         <source>Unsupported model file format.</source>
         <translation>Unsupported model file format.</translation>
@@ -1120,7 +1120,7 @@ Crash log: %2</translation>
         </message>
 </context>
 <context>
-    <name>pyraqt::ui::ModelSummaryWidget</name>
+    <name>pyraqt::ui::CadSummaryWidget</name>
     <message>
         <source>(unspecified)</source>
         <translation>(unspecified)</translation>
@@ -1183,7 +1183,7 @@ Crash log: %2</translation>
     </message>
 </context>
 <context>
-    <name>pyraqt::ui::OcctModelViewWidget</name>
+    <name>pyraqt::ui::OcctCadViewWidget</name>
     <message>
         <source>Front</source>
         <translation>Front</translation>

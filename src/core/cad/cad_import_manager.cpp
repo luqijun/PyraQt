@@ -1,6 +1,6 @@
-#include "core/modeling/model_import_manager.h"
+#include "core/cad/cad_import_manager.h"
 
-#include "core/modeling/model_occt_data.h"
+#include "core/cad/cad_occt_data.h"
 
 #include <QFileInfo>
 
@@ -68,9 +68,9 @@ QString pointText(const gp_Pnt &point)
         .arg(point.Z(), 0, 'f', 3);
 }
 
-ModelMeasurementSummary measureShape(const TopoDS_Shape &shape)
+CadMeasurementSummary measureShape(const TopoDS_Shape &shape)
 {
-    ModelMeasurementSummary summary;
+    CadMeasurementSummary summary;
 
     if (shape.IsNull()) {
         return summary;
@@ -111,12 +111,12 @@ ModelMeasurementSummary measureShape(const TopoDS_Shape &shape)
 
 } // namespace
 
-ModelImportManager::ModelImportManager(QObject *parent)
+CadImportManager::CadImportManager(QObject *parent)
     : QObject(parent)
 {
 }
 
-bool ModelImportManager::isOcctAvailable() const
+bool CadImportManager::isOcctAvailable() const
 {
 #if PYRAQT_HAS_OCCT
     return true;
@@ -125,26 +125,26 @@ bool ModelImportManager::isOcctAvailable() const
 #endif
 }
 
-bool ModelImportManager::isSupportedFile(const QString &path) const
+bool CadImportManager::isSupportedFile(const QString &path) const
 {
-    return detectFormat(path) != ModelFormat::Unknown;
+    return detectFormat(path) != CadFormat::Unknown;
 }
 
-ModelFormat ModelImportManager::detectFormat(const QString &path) const
+CadFormat CadImportManager::detectFormat(const QString &path) const
 {
     const QString suffix = normalizedSuffix(path);
     if (suffix == QStringLiteral("stp") || suffix == QStringLiteral("step")) {
-        return ModelFormat::Step;
+        return CadFormat::Step;
     }
     if (suffix == QStringLiteral("brep")) {
-        return ModelFormat::Brep;
+        return CadFormat::Brep;
     }
-    return ModelFormat::Unknown;
+    return CadFormat::Unknown;
 }
 
-ModelDocument ModelImportManager::importFile(const QString &path) const
+CadDocument CadImportManager::importFile(const QString &path) const
 {
-    ModelDocument document;
+    CadDocument document;
     document.filePath = QFileInfo(path).absoluteFilePath();
     document.format = detectFormat(path);
     document.summary.filePath = document.filePath;
@@ -155,7 +155,7 @@ ModelDocument ModelImportManager::importFile(const QString &path) const
         QStringLiteral("Shaded With Edges"),
     };
 
-    if (document.format == ModelFormat::Unknown) {
+    if (document.format == CadFormat::Unknown) {
         document.summary.errorMessage = tr("Unsupported model file format.");
         document.statusMessage = document.summary.errorMessage;
         return document;
@@ -168,7 +168,7 @@ ModelDocument ModelImportManager::importFile(const QString &path) const
 #else
     TopoDS_Shape shape;
 
-    if (document.format == ModelFormat::Step) {
+    if (document.format == CadFormat::Step) {
         STEPControl_Reader reader;
         const IFSelect_ReturnStatus status = reader.ReadFile(path.toUtf8().constData());
         if (status != IFSelect_RetDone) {
@@ -202,7 +202,7 @@ ModelDocument ModelImportManager::importFile(const QString &path) const
         return document;
     }
 
-    document.occtData = std::make_shared<ModelOcctData>();
+    document.occtData = std::make_shared<CadOcctData>();
     document.occtData->rootShape = shape;
     document.occtData->aisShape = new AIS_Shape(shape);
     document.summary.isValid = true;

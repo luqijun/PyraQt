@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/modeling/model_types.h"
+#include "core/cad/cad_types.h"
 
 #include <QWidget>
 
@@ -11,21 +11,21 @@ class QPlainTextEdit;
 
 namespace pyraqt::ui {
 
-class ModelSummaryWidget final : public QWidget {
+class CadSummaryWidget final : public QWidget {
     Q_OBJECT
 
 public:
-    explicit ModelSummaryWidget(QWidget *parent = nullptr);
+    explicit CadSummaryWidget(QWidget *parent = nullptr);
 
-    void setSummary(const pyraqt::core::ModelImportSummary &summary);
-    [[nodiscard]] pyraqt::core::ModelImportSummary summary() const;
+    void setSummary(const pyraqt::core::CadImportSummary &summary);
+    [[nodiscard]] pyraqt::core::CadImportSummary summary() const;
 
 protected:
     void changeEvent(QEvent *event) override;
 
 private:
     void retranslateUi();
-    pyraqt::core::ModelImportSummary m_summary;
+    pyraqt::core::CadImportSummary m_summary;
     QFormLayout *m_summaryLayout = nullptr;
     QLabel *m_fileValueLabel = nullptr;
     QLabel *m_formatValueLabel = nullptr;

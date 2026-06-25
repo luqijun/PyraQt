@@ -1,6 +1,6 @@
 #include "core/theme/theme_manager.h"
 #include "core/i18n/i18n_manager.h"
-#include "core/modeling/model_import_manager.h"
+#include "core/cad/cad_import_manager.h"
 #include "core/config/config_manager.h"
 #include "core/command/command_manager.h"
 #include "core/logging/log_manager.h"
@@ -27,7 +27,7 @@
 #include "ui/mainwindow/main_window.h"
 #include "ui/panels/files/file_browser_panel.h"
 #include "ui/panels/plugins/plugin_manager_panel.h"
-#include "ui/panels/properties/model_properties_panel.h"
+#include "ui/panels/properties/cad_properties_panel.h"
 #include "ui/panels/python/python_console_widget.h"
 
 #include <QApplication>
@@ -112,7 +112,7 @@ void UiThemeTest::editorAppliesThemeAndTracksChanges()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QVERIFY(themeManager.setDarkTheme());
@@ -130,7 +130,7 @@ void UiThemeTest::workspaceRenamesOpenPathsAndClosesByPath()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QTemporaryDir dir;
@@ -181,7 +181,7 @@ void UiThemeTest::workspaceClosesOtherEditors()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QTemporaryDir dir;
@@ -216,7 +216,7 @@ void UiThemeTest::workspaceClosesEditorsToRight()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QTemporaryDir dir;
@@ -255,7 +255,7 @@ void UiThemeTest::workspaceCloseAllEditorsKeepsUntitledTab()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QTemporaryDir dir;
@@ -281,7 +281,7 @@ void UiThemeTest::workspaceStopsBatchCloseWhenConfirmationRejected()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QTemporaryDir dir;
@@ -348,7 +348,7 @@ void UiThemeTest::workspaceOpensPlainTextAndBinaryFiles()
     QVERIFY(app != nullptr);
 
     pyraqt::core::ThemeManager themeManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::ui::EditorWorkspaceWidget workspace(themeManager, modelImportManager);
 
     QTemporaryDir dir;
@@ -602,7 +602,7 @@ void UiThemeTest::mainWindowToolbarShowsIconsOnlyAndRefreshesOnThemeChange()
     QVERIFY(logManager.initialize());
     pyraqt::core::ThemeManager themeManager(*app);
     pyraqt::core::I18nManager i18nManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
     pyraqt::core::PythonRunner runner(runtimeManager);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
@@ -713,7 +713,7 @@ void UiThemeTest::localeSwitchRefreshesOpenWidgetsAndCommands()
     QVERIFY(logManager.initialize());
     pyraqt::core::ThemeManager themeManager(*app);
     pyraqt::core::I18nManager i18nManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
     pyraqt::core::PythonRunner runner(runtimeManager);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
@@ -778,7 +778,7 @@ void UiThemeTest::modelViewActionsUseStableViewKeys()
     QVERIFY(logManager.initialize());
     pyraqt::core::ThemeManager themeManager(*app);
     pyraqt::core::I18nManager i18nManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
     pyraqt::core::PythonRunner runner(runtimeManager);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
@@ -868,7 +868,7 @@ void UiThemeTest::mainWindowConsoleAndLogDocksCanBeCleared()
     QVERIFY(logManager.initialize());
     pyraqt::core::ThemeManager themeManager(*app);
     pyraqt::core::I18nManager i18nManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
     pyraqt::core::PythonRunner runner(runtimeManager);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
@@ -957,7 +957,7 @@ void UiThemeTest::mainWindowPropertiesDockTracksCurrentDocumentKind()
     QVERIFY(logManager.initialize());
     pyraqt::core::ThemeManager themeManager(*app);
     pyraqt::core::I18nManager i18nManager(*app);
-    pyraqt::core::ModelImportManager modelImportManager;
+    pyraqt::core::CadImportManager modelImportManager;
     pyraqt::core::PythonRuntimeManager runtimeManager(configManager);
     pyraqt::core::PythonRunner runner(runtimeManager);
     pyraqt::core::PyraApiBridge bridge(runtimeManager, logManager);
@@ -1016,18 +1016,18 @@ void UiThemeTest::mainWindowPropertiesDockTracksCurrentDocumentKind()
 
 void UiThemeTest::modelPropertiesPanelUsesFixedMinimumWidthAndTooltips()
 {
-    pyraqt::ui::ModelPropertiesPanel panel;
+    pyraqt::ui::CadPropertiesPanel panel;
     panel.resize(280, 320);
     panel.show();
     QCoreApplication::processEvents();
 
     QCOMPARE(panel.minimumWidth(), 280);
 
-    pyraqt::core::ModelDocument document;
+    pyraqt::core::CadDocument document;
     document.statusMessage = QStringLiteral("Loaded");
     document.filePath = QStringLiteral("/tmp/projects/a/very/long/path/to/a-model-with-a-long-name.brep");
     document.boundingBoxText = QStringLiteral("X:[-1000.0, 1000.0] Y:[-1000.0, 1000.0] Z:[-1000.0, 1000.0]");
-    panel.setModelDocument(document);
+    panel.setCadDocument(document);
     QCoreApplication::processEvents();
 
     auto *fileLabel = panel.findChild<QLabel *>(QStringLiteral("propertiesFileValue"));

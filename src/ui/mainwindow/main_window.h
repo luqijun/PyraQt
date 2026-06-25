@@ -17,7 +17,7 @@ class ConfigManager;
 class CrashRecoveryManager;
 class I18nManager;
 class LogManager;
-class ModelImportManager;
+class CadImportManager;
 class PluginManager;
 class PythonRuntimeManager;
 class ScriptExecutionManager;
@@ -31,8 +31,8 @@ namespace pyraqt::ui {
 class CommandPaletteDialog;
 class EditorWorkspaceWidget;
 class FileBrowserPanel;
-class ModelDocumentWidget;
-class ModelPropertiesPanel;
+class CadDocumentWidget;
+class CadPropertiesPanel;
 class PluginManagerPanel;
 class PythonConsoleWidget;
 
@@ -43,7 +43,7 @@ public:
     MainWindow(
         core::ConfigManager &configManager,
         core::LogManager &logManager,
-        core::ModelImportManager &modelImportManager,
+        core::CadImportManager &cadImportManager,
         core::ThemeManager &themeManager,
         core::I18nManager &i18nManager,
         core::PythonRuntimeManager &pythonRuntimeManager,
@@ -70,14 +70,14 @@ private:
     void refreshRecentFilesMenu();
     void registerBuiltInCommands();
     void updateTabActionStates();
-    void updateModelActionStates();
+    void updateCadActionStates();
     bool openPath(const QString &filePath, bool addToRecent = true);
     void runCurrentScript();
-    void fitModelView();
-    void setModelViewPreset();
-    void setModelDisplayMode();
-    void setModelSelectionMode();
-    void clearModelSelection();
+    void fitCadView();
+    void setCadViewPreset();
+    void setCadDisplayMode();
+    void setCadSelectionMode();
+    void clearCadSelection();
     void checkForUpdates();
     void openSettings();
     void openPythonTools();
@@ -114,7 +114,7 @@ private:
 
     core::ConfigManager &m_configManager;
     core::LogManager &m_logManager;
-    core::ModelImportManager &m_modelImportManager;
+    core::CadImportManager &m_cadImportManager;
     core::ThemeManager &m_themeManager;
     core::I18nManager &m_i18nManager;
     core::PythonRuntimeManager &m_pythonRuntimeManager;
@@ -126,7 +126,7 @@ private:
     core::CrashRecoveryManager &m_crashRecoveryManager;
 
     FileBrowserPanel *m_fileBrowserPanel = nullptr;
-    ModelPropertiesPanel *m_modelPropertiesPanel = nullptr;
+    CadPropertiesPanel *m_cadPropertiesPanel = nullptr;
     PluginManagerPanel *m_pluginManagerPanel = nullptr;
     QDockWidget *m_propertiesDock = nullptr;
     EditorWorkspaceWidget *m_workspaceWidget = nullptr;

@@ -1,70 +1,70 @@
-#include "core/modeling/model_property_service.h"
+#include "core/cad/cad_property_service.h"
 
 #include <QStringList>
 
 namespace pyraqt::core {
 
-QString ModelPropertyService::formatDisplayMode(const ModelDisplayMode mode)
+QString CadPropertyService::formatDisplayMode(const CadDisplayMode mode)
 {
     switch (mode) {
-    case ModelDisplayMode::Wireframe:
+    case CadDisplayMode::Wireframe:
         return QStringLiteral("Wireframe");
-    case ModelDisplayMode::Shaded:
+    case CadDisplayMode::Shaded:
         return QStringLiteral("Shaded");
-    case ModelDisplayMode::ShadedWithEdges:
+    case CadDisplayMode::ShadedWithEdges:
         return QStringLiteral("Shaded With Edges");
     default:
         return QStringLiteral("Unknown");
     }
 }
 
-QString ModelPropertyService::formatSelectionMode(const ModelSelectionMode mode)
+QString CadPropertyService::formatSelectionMode(const CadSelectionMode mode)
 {
     switch (mode) {
-    case ModelSelectionMode::Shape:
+    case CadSelectionMode::Shape:
         return QStringLiteral("Shape");
-    case ModelSelectionMode::Face:
+    case CadSelectionMode::Face:
         return QStringLiteral("Face");
-    case ModelSelectionMode::Edge:
+    case CadSelectionMode::Edge:
         return QStringLiteral("Edge");
-    case ModelSelectionMode::Vertex:
+    case CadSelectionMode::Vertex:
         return QStringLiteral("Vertex");
     default:
         return QStringLiteral("Unknown");
     }
 }
 
-QString ModelPropertyService::formatSelectionType(const ModelSelectionKind kind)
+QString CadPropertyService::formatSelectionType(const CadSelectionKind kind)
 {
     switch (kind) {
-    case ModelSelectionKind::Model:
-        return QStringLiteral("Model");
-    case ModelSelectionKind::Shape:
+    case CadSelectionKind::Document:
+        return QStringLiteral("Document");
+    case CadSelectionKind::Shape:
         return QStringLiteral("Shape");
-    case ModelSelectionKind::Face:
+    case CadSelectionKind::Face:
         return QStringLiteral("Face");
-    case ModelSelectionKind::Edge:
+    case CadSelectionKind::Edge:
         return QStringLiteral("Edge");
-    case ModelSelectionKind::Vertex:
+    case CadSelectionKind::Vertex:
         return QStringLiteral("Vertex");
     default:
         return QStringLiteral("None");
     }
 }
 
-QString ModelPropertyService::formatModelFormat(const ModelFormat format)
+QString CadPropertyService::formatFormat(const CadFormat format)
 {
     switch (format) {
-    case ModelFormat::Step:
+    case CadFormat::Step:
         return QStringLiteral("STEP");
-    case ModelFormat::Brep:
+    case CadFormat::Brep:
         return QStringLiteral("BREP");
     default:
         return QStringLiteral("Unknown");
     }
 }
 
-QString ModelPropertyService::formatMeasureSummary(const ModelMeasurementSummary &measurements)
+QString CadPropertyService::formatMeasureSummary(const CadMeasurementSummary &measurements)
 {
     QStringList parts;
     if (measurements.hasLength) {

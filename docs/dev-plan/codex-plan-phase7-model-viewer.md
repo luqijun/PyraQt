@@ -13,11 +13,11 @@
   - Qt 侧补齐模型视口依赖，兼容 Qt5 与 Qt6。
   - 无完整 OCCT 可视化环境时主线仍可配置，模型视图功能禁用并明确提示。
 - 核心模型与属性
-  - 新增 `ModelDocument`、`ModelSelectionInfo`、`ModelDisplayMode`、`ModelSelectionMode`。
-  - `ModelImportManager` 从只返回摘要升级为返回模型文档与摘要，补齐包围盒和几何量统计。
+  - 新增 `CadDocument`、`CadSelectionInfo`、`CadDisplayMode`、`CadSelectionMode`。
+  - `CadImportManager` 从只返回摘要升级为返回模型文档与摘要，补齐包围盒和几何量统计。
   - 新增属性提取服务，将模型整体属性和选中子形属性整理为 UI 可显示项。
 - 3D 视口与交互
-  - 新增 `OcctModelViewWidget` 和模型文档页，承载真实模型显示。
+  - 新增 `OcctCadViewWidget` 和模型文档页，承载真实模型显示。
   - 首版支持旋转、平移、缩放、Fit All、标准视角、线框/着色/带边着色、形体/面/边/点选择、hover 高亮、单选。
 - 主窗口与工作区
   - 右侧 `Properties` dock 替换为真实属性面板。
@@ -26,13 +26,13 @@
 
 ## Public Interfaces
 
-- `core::ModelDocument`
-- `core::ModelSelectionInfo`
-- `core::ModelDisplayMode`
-- `core::ModelSelectionMode`
-- `core::ModelImportManager::importFile(path)` 返回模型文档结果
-- `ui::OcctModelViewWidget`
-- `ui::ModelPropertiesPanel`
+- `core::CadDocument`
+- `core::CadSelectionInfo`
+- `core::CadDisplayMode`
+- `core::CadSelectionMode`
+- `core::CadImportManager::importFile(path)` 返回模型文档结果
+- `ui::OcctCadViewWidget`
+- `ui::CadPropertiesPanel`
 - `ui::EditorWorkspaceWidget` 继续暴露 `openPath(path)`，模型分支改为视图文档页
 
 ## Test Plan

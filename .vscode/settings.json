@@ -1,0 +1,16 @@
+{
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "cmake.useCMakePresets": "always",
+    "cmake.configureOnOpen": true,
+    "cmake.environment": {
+        "PATH": "/home/numbat/miniconda3/envs/py310/bin:${env:PATH}",
+        "CONDA_PREFIX": "/home/numbat/miniconda3/envs/py310"
+    },
+    "cmake.configureSettings": {
+        "CMAKE_PREFIX_PATH": "/home/numbat/miniconda3/envs/py310",
+        "Python3_ROOT_DIR": "/home/numbat/miniconda3/envs/py310",
+        "Python3_EXECUTABLE": "/home/numbat/miniconda3/envs/py310/bin/python"
+    },
+    "C_Cpp.intelliSenseEngine": "disabled"
+}

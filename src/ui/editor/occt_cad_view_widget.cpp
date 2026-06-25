@@ -1,7 +1,7 @@
-#include "ui/editor/occt_model_view_widget.h"
+#include "ui/editor/occt_cad_view_widget.h"
 
-#include "core/modeling/model_occt_data.h"
-#include "core/modeling/model_property_service.h"
+#include "core/cad/cad_occt_data.h"
+#include "core/cad/cad_property_service.h"
 
 #include <QMouseEvent>
 #include <QPainter>
@@ -62,9 +62,9 @@ QString boundsTextFromMinMax(
         .arg(zmax, 0, 'f', 3);
 }
 
-pyraqt::core::ModelMeasurementSummary measureShape(const TopoDS_Shape &shape)
+pyraqt::core::CadMeasurementSummary measureShape(const TopoDS_Shape &shape)
 {
-    pyraqt::core::ModelMeasurementSummary summary;
+    pyraqt::core::CadMeasurementSummary summary;
     if (shape.IsNull()) {
         return summary;
     }
@@ -125,30 +125,30 @@ QString shapeLabel(const TopoDS_Shape &shape)
     }
 }
 
-pyraqt::core::ModelSelectionKind selectionKindFromShape(const TopoDS_Shape &shape)
+pyraqt::core::CadSelectionKind selectionKindFromShape(const TopoDS_Shape &shape)
 {
     switch (shape.ShapeType()) {
     case TopAbs_FACE:
-        return pyraqt::core::ModelSelectionKind::Face;
+        return pyraqt::core::CadSelectionKind::Face;
     case TopAbs_EDGE:
-        return pyraqt::core::ModelSelectionKind::Edge;
+        return pyraqt::core::CadSelectionKind::Edge;
     case TopAbs_VERTEX:
-        return pyraqt::core::ModelSelectionKind::Vertex;
+        return pyraqt::core::CadSelectionKind::Vertex;
     default:
-        return pyraqt::core::ModelSelectionKind::Shape;
+        return pyraqt::core::CadSelectionKind::Shape;
     }
 }
 
-int occtSelectionMode(const pyraqt::core::ModelSelectionMode mode)
+int occtSelectionMode(const pyraqt::core::CadSelectionMode mode)
 {
     switch (mode) {
-    case pyraqt::core::ModelSelectionMode::Vertex:
+    case pyraqt::core::CadSelectionMode::Vertex:
         return AIS_Shape::SelectionMode(TopAbs_VERTEX);
-    case pyraqt::core::ModelSelectionMode::Edge:
+    case pyraqt::core::CadSelectionMode::Edge:
         return AIS_Shape::SelectionMode(TopAbs_EDGE);
-    case pyraqt::core::ModelSelectionMode::Face:
+    case pyraqt::core::CadSelectionMode::Face:
         return AIS_Shape::SelectionMode(TopAbs_FACE);
-    case pyraqt::core::ModelSelectionMode::Shape:
+    case pyraqt::core::CadSelectionMode::Shape:
     default:
         return AIS_Shape::SelectionMode(TopAbs_SHAPE);
     }
@@ -182,30 +182,30 @@ QString displayNameForViewKey(const QString &viewKey)
 {
     const QString normalized = viewKey.trimmed().toLower();
     if (normalized == QStringLiteral("front")) {
-        return OcctModelViewWidget::tr("Front");
+        return OcctCadViewWidget::tr("Front");
     }
     if (normalized == QStringLiteral("back")) {
-        return OcctModelViewWidget::tr("Back");
+        return OcctCadViewWidget::tr("Back");
     }
     if (normalized == QStringLiteral("left")) {
-        return OcctModelViewWidget::tr("Left");
+        return OcctCadViewWidget::tr("Left");
     }
     if (normalized == QStringLiteral("right")) {
-        return OcctModelViewWidget::tr("Right");
+        return OcctCadViewWidget::tr("Right");
     }
     if (normalized == QStringLiteral("top")) {
-        return OcctModelViewWidget::tr("Top");
+        return OcctCadViewWidget::tr("Top");
     }
     if (normalized == QStringLiteral("bottom")) {
-        return OcctModelViewWidget::tr("Bottom");
+        return OcctCadViewWidget::tr("Bottom");
     }
-    return OcctModelViewWidget::tr("Isometric");
+    return OcctCadViewWidget::tr("Isometric");
 }
 #endif
 
 } // namespace
 
-OcctModelViewWidget::OcctModelViewWidget(QWidget *parent)
+OcctCadViewWidget::OcctCadViewWidget(QWidget *parent)
     : QWidget(parent)
 {
     setAttribute(Qt::WA_NativeWindow);
@@ -216,9 +216,9 @@ OcctModelViewWidget::OcctModelViewWidget(QWidget *parent)
     setMinimumSize(240, 180);
 }
 
-OcctModelViewWidget::~OcctModelViewWidget() = default;
+OcctCadViewWidget::~OcctCadViewWidget() = default;
 
-void OcctModelViewWidget::setDocument(const pyraqt::core::ModelDocument &document)
+void OcctCadViewWidget::setDocument(const pyraqt::core::CadDocument &document)
 {
     m_document = document;
     m_selectionInfo = {};
@@ -233,17 +233,17 @@ void OcctModelViewWidget::setDocument(const pyraqt::core::ModelDocument &documen
     emit selectionInfoChanged(m_selectionInfo);
 }
 
-void OcctModelViewWidget::setDisplayMode(const pyraqt::core::ModelDisplayMode mode)
+void OcctCadViewWidget::setDisplayMode(const pyraqt::core::CadDisplayMode mode)
 {
     m_document.displayMode = mode;
     if (isViewerReady()) {
         applyDisplayMode();
     }
     emit displayModeChanged(mode);
-    emit statusMessageChanged(pyraqt::core::ModelPropertyService::formatDisplayMode(mode));
+    emit statusMessageChanged(pyraqt::core::CadPropertyService::formatDisplayMode(mode));
 }
 
-void OcctModelViewWidget::setSelectionMode(const pyraqt::core::ModelSelectionMode mode)
+void OcctCadViewWidget::setSelectionMode(const pyraqt::core::CadSelectionMode mode)
 {
     m_document.selectionMode = mode;
     if (isViewerReady()) {
@@ -251,10 +251,10 @@ void OcctModelViewWidget::setSelectionMode(const pyraqt::core::ModelSelectionMod
     }
     emit selectionModeChanged(mode);
     refreshSelectionInfo();
-    emit statusMessageChanged(pyraqt::core::ModelPropertyService::formatSelectionMode(mode));
+    emit statusMessageChanged(pyraqt::core::CadPropertyService::formatSelectionMode(mode));
 }
 
-void OcctModelViewWidget::fitAll()
+void OcctCadViewWidget::fitAll()
 {
 #if PYRAQT_HAS_OCCT
     if (m_view.IsNull()) {
@@ -268,7 +268,7 @@ void OcctModelViewWidget::fitAll()
     emit statusMessageChanged(tr("Fit All"));
 }
 
-void OcctModelViewWidget::setStandardView(const QString &viewKey)
+void OcctCadViewWidget::setStandardView(const QString &viewKey)
 {
 #if PYRAQT_HAS_OCCT
     if (!m_view.IsNull()) {
@@ -281,7 +281,7 @@ void OcctModelViewWidget::setStandardView(const QString &viewKey)
     emit statusMessageChanged(tr("View: %1").arg(displayNameForViewKey(viewKey)));
 }
 
-void OcctModelViewWidget::clearSelection()
+void OcctCadViewWidget::clearSelection()
 {
 #if PYRAQT_HAS_OCCT
     if (!m_context.IsNull()) {
@@ -295,17 +295,17 @@ void OcctModelViewWidget::clearSelection()
     emit selectionInfoChanged(m_selectionInfo);
 }
 
-pyraqt::core::ModelDocument OcctModelViewWidget::document() const
+pyraqt::core::CadDocument OcctCadViewWidget::document() const
 {
     return m_document;
 }
 
-pyraqt::core::ModelSelectionInfo OcctModelViewWidget::selectionInfo() const
+pyraqt::core::CadSelectionInfo OcctCadViewWidget::selectionInfo() const
 {
     return m_selectionInfo;
 }
 
-void OcctModelViewWidget::showEvent(QShowEvent *event)
+void OcctCadViewWidget::showEvent(QShowEvent *event)
 {
     QWidget::showEvent(event);
     initializeViewer();
@@ -314,7 +314,7 @@ void OcctModelViewWidget::showEvent(QShowEvent *event)
     }
 }
 
-void OcctModelViewWidget::resizeEvent(QResizeEvent *event)
+void OcctCadViewWidget::resizeEvent(QResizeEvent *event)
 {
     QWidget::resizeEvent(event);
 #if PYRAQT_HAS_OCCT
@@ -332,7 +332,7 @@ void OcctModelViewWidget::resizeEvent(QResizeEvent *event)
 #endif
 }
 
-void OcctModelViewWidget::paintEvent(QPaintEvent *event)
+void OcctCadViewWidget::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
 
@@ -349,7 +349,7 @@ void OcctModelViewWidget::paintEvent(QPaintEvent *event)
     painter.drawText(rect(), Qt::AlignCenter, tr("OCCT viewer unavailable"));
 }
 
-void OcctModelViewWidget::mousePressEvent(QMouseEvent *event)
+void OcctCadViewWidget::mousePressEvent(QMouseEvent *event)
 {
     QWidget::mousePressEvent(event);
 
@@ -370,7 +370,7 @@ void OcctModelViewWidget::mousePressEvent(QMouseEvent *event)
 #endif
 }
 
-void OcctModelViewWidget::mouseMoveEvent(QMouseEvent *event)
+void OcctCadViewWidget::mouseMoveEvent(QMouseEvent *event)
 {
     QWidget::mouseMoveEvent(event);
 
@@ -396,7 +396,7 @@ void OcctModelViewWidget::mouseMoveEvent(QMouseEvent *event)
 #endif
 }
 
-void OcctModelViewWidget::mouseReleaseEvent(QMouseEvent *event)
+void OcctCadViewWidget::mouseReleaseEvent(QMouseEvent *event)
 {
     QWidget::mouseReleaseEvent(event);
 
@@ -426,7 +426,7 @@ void OcctModelViewWidget::mouseReleaseEvent(QMouseEvent *event)
 #endif
 }
 
-void OcctModelViewWidget::mouseDoubleClickEvent(QMouseEvent *event)
+void OcctCadViewWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
     QWidget::mouseDoubleClickEvent(event);
     if (event->button() == Qt::LeftButton) {
@@ -434,7 +434,7 @@ void OcctModelViewWidget::mouseDoubleClickEvent(QMouseEvent *event)
     }
 }
 
-void OcctModelViewWidget::wheelEvent(QWheelEvent *event)
+void OcctCadViewWidget::wheelEvent(QWheelEvent *event)
 {
     QWidget::wheelEvent(event);
 
@@ -457,7 +457,7 @@ void OcctModelViewWidget::wheelEvent(QWheelEvent *event)
 #endif
 }
 
-bool OcctModelViewWidget::isViewerReady() const
+bool OcctCadViewWidget::isViewerReady() const
 {
 #if PYRAQT_HAS_OCCT
     return !m_context.IsNull() && !m_view.IsNull();
@@ -466,7 +466,7 @@ bool OcctModelViewWidget::isViewerReady() const
 #endif
 }
 
-void OcctModelViewWidget::initializeViewer()
+void OcctCadViewWidget::initializeViewer()
 {
 #if PYRAQT_HAS_OCCT
     if (isViewerReady()) {
@@ -502,7 +502,7 @@ void OcctModelViewWidget::initializeViewer()
 #endif
 }
 
-void OcctModelViewWidget::attachViewToNativeWindow()
+void OcctCadViewWidget::attachViewToNativeWindow()
 {
 #if PYRAQT_HAS_OCCT
     if (m_view.IsNull()) {
@@ -521,7 +521,7 @@ void OcctModelViewWidget::attachViewToNativeWindow()
 #endif
 }
 
-void OcctModelViewWidget::displayDocument()
+void OcctCadViewWidget::displayDocument()
 {
 #if PYRAQT_HAS_OCCT
     if (!isViewerReady()) {
@@ -543,24 +543,24 @@ void OcctModelViewWidget::displayDocument()
 #endif
 }
 
-void OcctModelViewWidget::applyDisplayMode()
+void OcctCadViewWidget::applyDisplayMode()
 {
 #if PYRAQT_HAS_OCCT
     if (m_context.IsNull() || !m_document.occtData || m_document.occtData->aisShape.IsNull()) {
         return;
     }
 
-    const int mode = m_document.displayMode == pyraqt::core::ModelDisplayMode::Wireframe ? AIS_WireFrame : AIS_Shaded;
+    const int mode = m_document.displayMode == pyraqt::core::CadDisplayMode::Wireframe ? AIS_WireFrame : AIS_Shaded;
     m_context->SetDisplayMode(m_document.occtData->aisShape, mode, Standard_False);
 
     Handle(Prs3d_Drawer) attributes = m_document.occtData->aisShape->Attributes();
-    attributes->SetFaceBoundaryDraw(m_document.displayMode == pyraqt::core::ModelDisplayMode::ShadedWithEdges);
-    attributes->SetIsoOnTriangulation(m_document.displayMode == pyraqt::core::ModelDisplayMode::ShadedWithEdges);
+    attributes->SetFaceBoundaryDraw(m_document.displayMode == pyraqt::core::CadDisplayMode::ShadedWithEdges);
+    attributes->SetIsoOnTriangulation(m_document.displayMode == pyraqt::core::CadDisplayMode::ShadedWithEdges);
     m_context->Redisplay(m_document.occtData->aisShape, Standard_True);
 #endif
 }
 
-void OcctModelViewWidget::applySelectionMode()
+void OcctCadViewWidget::applySelectionMode()
 {
 #if PYRAQT_HAS_OCCT
     if (m_context.IsNull() || !m_document.occtData || m_document.occtData->aisShape.IsNull()) {
@@ -573,7 +573,7 @@ void OcctModelViewWidget::applySelectionMode()
 #endif
 }
 
-void OcctModelViewWidget::updateHoverInfo(const int x, const int y)
+void OcctCadViewWidget::updateHoverInfo(const int x, const int y)
 {
 #if PYRAQT_HAS_OCCT
     if (m_context.IsNull() || m_view.IsNull()) {
@@ -588,15 +588,15 @@ void OcctModelViewWidget::updateHoverInfo(const int x, const int y)
 #endif
 }
 
-void OcctModelViewWidget::refreshSelectionInfo()
+void OcctCadViewWidget::refreshSelectionInfo()
 {
     m_selectionInfo = buildSelectionInfo(true);
     emit selectionInfoChanged(m_selectionInfo);
 }
 
-pyraqt::core::ModelSelectionInfo OcctModelViewWidget::buildSelectionInfo(const bool selected) const
+pyraqt::core::CadSelectionInfo OcctCadViewWidget::buildSelectionInfo(const bool selected) const
 {
-    pyraqt::core::ModelSelectionInfo info;
+    pyraqt::core::CadSelectionInfo info;
 
 #if PYRAQT_HAS_OCCT
     if (m_context.IsNull()) {
@@ -617,7 +617,7 @@ pyraqt::core::ModelSelectionInfo OcctModelViewWidget::buildSelectionInfo(const b
     info.kind = selectionKindFromShape(shape);
     info.label = shapeLabel(shape);
     info.measurements = measureShape(shape);
-    info.measureText = pyraqt::core::ModelPropertyService::formatMeasureSummary(info.measurements);
+    info.measureText = pyraqt::core::CadPropertyService::formatMeasureSummary(info.measurements);
 
     Bnd_Box box;
     BRepBndLib::Add(shape, box);

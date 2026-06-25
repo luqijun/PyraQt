@@ -8,9 +8,9 @@ class QEvent;
 class QTabWidget;
 
 namespace pyraqt::core {
-class ModelImportManager;
-struct ModelDocument;
-struct ModelSelectionInfo;
+class CadImportManager;
+struct CadDocument;
+struct CadSelectionInfo;
 class PythonRuntimeManager;
 class ThemeManager;
 } // namespace pyraqt::core
@@ -18,7 +18,7 @@ class ThemeManager;
 namespace pyraqt::ui {
 
 class EditorPlaceholderWidget;
-class ModelDocumentWidget;
+class CadDocumentWidget;
 class ScriptEditorWidget;
 
 class EditorWorkspaceWidget final : public QWidget {
@@ -27,14 +27,14 @@ class EditorWorkspaceWidget final : public QWidget {
 public:
     enum class DocumentKind {
         Text,
-        Model,
+        Cad,
         PreviewUnavailable,
         None,
     };
 
     explicit EditorWorkspaceWidget(
         core::ThemeManager &themeManager,
-        core::ModelImportManager &modelImportManager,
+        core::CadImportManager &cadImportManager,
         core::PythonRuntimeManager *pythonRuntimeManager = nullptr,
         QWidget *parent = nullptr);
 
@@ -54,9 +54,9 @@ public:
 
     [[nodiscard]] ScriptEditorWidget *currentEditor() const;
     [[nodiscard]] ScriptEditorWidget *editorAt(int index) const;
-    [[nodiscard]] ModelDocumentWidget *currentModelDocumentWidget() const;
-    [[nodiscard]] pyraqt::core::ModelDocument currentModelDocument() const;
-    [[nodiscard]] pyraqt::core::ModelSelectionInfo currentModelSelection() const;
+    [[nodiscard]] CadDocumentWidget *currentCadDocumentWidget() const;
+    [[nodiscard]] pyraqt::core::CadDocument currentCadDocument() const;
+    [[nodiscard]] pyraqt::core::CadSelectionInfo currentCadSelection() const;
     [[nodiscard]] QString currentFilePath() const;
     [[nodiscard]] DocumentKind currentDocumentKind() const;
     [[nodiscard]] bool currentFileRunnable() const;
@@ -76,8 +76,8 @@ signals:
     void currentCursorChanged(int line, int column);
     void documentModificationChanged(bool modified);
     void editorAvailabilityChanged(bool available);
-    void modelDocumentChanged(const pyraqt::core::ModelDocument &document);
-    void modelSelectionChanged(const pyraqt::core::ModelSelectionInfo &selection);
+    void cadDocumentChanged(const pyraqt::core::CadDocument &document);
+    void cadSelectionChanged(const pyraqt::core::CadSelectionInfo &selection);
     void openFilesChanged(const QStringList &files);
     void requestCloseConfirmation(const QString &title, const QString &message, bool *accepted);
     void openPathFailed(const QString &filePath, const QString &message);
@@ -85,11 +85,11 @@ signals:
 private:
     void retranslateUi();
     ScriptEditorWidget *createEditor();
-    ModelDocumentWidget *createModelDocumentWidget(const pyraqt::core::ModelDocument &document);
+    CadDocumentWidget *createCadDocumentWidget(const pyraqt::core::CadDocument &document);
     EditorPlaceholderWidget *createPreviewUnavailableWidget(const QString &filePath);
     void updateTabTitle(int index);
     void connectEditor(ScriptEditorWidget *editor);
-    void connectModelDocumentWidget(ModelDocumentWidget *widget);
+    void connectCadDocumentWidget(CadDocumentWidget *widget);
     [[nodiscard]] QString filePathForWidget(QWidget *widget) const;
     [[nodiscard]] DocumentKind documentKindForWidget(QWidget *widget) const;
     [[nodiscard]] bool isEditableTextFile(const QString &filePath) const;
@@ -102,7 +102,7 @@ private:
     bool closeEditorInternal(int index);
 
     core::ThemeManager &m_themeManager;
-    core::ModelImportManager &m_modelImportManager;
+    core::CadImportManager &m_cadImportManager;
     core::PythonRuntimeManager *m_pythonRuntimeManager = nullptr;
     QTabWidget *m_tabWidget = nullptr;
     int m_untitledCounter = 1;

@@ -1,11 +1,11 @@
 #include "ui/editor/editor_workspace_widget.h"
 
-#include "core/modeling/model_import_manager.h"
-#include "core/modeling/model_types.h"
+#include "core/cad/cad_import_manager.h"
+#include "core/cad/cad_types.h"
 #include "core/scripting/python/python_runtime_manager.h"
 #include "core/theme/theme_manager.h"
 #include "ui/editor/editor_placeholder_widget.h"
-#include "ui/editor/model_document_widget.h"
+#include "ui/editor/cad_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
 
 #include <QAction>
@@ -99,12 +99,12 @@ namespace pyraqt::ui {
 
 EditorWorkspaceWidget::EditorWorkspaceWidget(
     core::ThemeManager &themeManager,
-    core::ModelImportManager &modelImportManager,
+    core::CadImportManager &cadImportManager,
     core::PythonRuntimeManager *pythonRuntimeManager,
     QWidget *parent)
     : QWidget(parent)
     , m_themeManager(themeManager)
-    , m_modelImportManager(modelImportManager)
+    , m_cadImportManager(cadImportManager)
     , m_pythonRuntimeManager(pythonRuntimeManager)
 {
     auto *layout = new QVBoxLayout(this);
@@ -155,12 +155,12 @@ bool EditorWorkspaceWidget::openPath(const QString &filePath)
         return true;
     }
 
-    if (m_modelImportManager.isSupportedFile(filePath)) {
-        const core::ModelDocument document = m_modelImportManager.importFile(filePath);
+    if (m_cadImportManager.isSupportedFile(filePath)) {
+        const core::CadDocument document = m_cadImportManager.importFile(filePath);
         if (!document.isValid) {
             emit openPathFailed(filePath, document.summary.errorMessage);
         }
-        ModelDocumentWidget *documentWidget = createModelDocumentWidget(document);
+        CadDocumentWidget *documentWidget = createCadDocumentWidget(document);
         const int index = m_tabWidget->addTab(documentWidget, QFileInfo(filePath).fileName());
         m_tabWidget->setCurrentIndex(index);
         updateTabTitle(index);
@@ -240,7 +240,7 @@ bool EditorWorkspaceWidget::renameOpenPath(const QString &oldPath, const QString
     QWidget *widget = m_tabWidget->widget(index);
     if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
         editor->setCurrentFilePath(newPath);
-    } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+    } else if (auto *documentWidget = qobject_cast<CadDocumentWidget *>(widget)) {
         documentWidget->setDocumentFilePath(newPath);
     } else if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
         placeholder->setFilePath(newPath);
@@ -302,22 +302,22 @@ ScriptEditorWidget *EditorWorkspaceWidget::editorAt(int index) const
     return qobject_cast<ScriptEditorWidget *>(m_tabWidget->widget(index));
 }
 
-ModelDocumentWidget *EditorWorkspaceWidget::currentModelDocumentWidget() const
+CadDocumentWidget *EditorWorkspaceWidget::currentCadDocumentWidget() const
 {
-    return qobject_cast<ModelDocumentWidget *>(m_tabWidget->currentWidget());
+    return qobject_cast<CadDocumentWidget *>(m_tabWidget->currentWidget());
 }
 
-pyraqt::core::ModelDocument EditorWorkspaceWidget::currentModelDocument() const
+pyraqt::core::CadDocument EditorWorkspaceWidget::currentCadDocument() const
 {
-    if (auto *documentWidget = currentModelDocumentWidget()) {
+    if (auto *documentWidget = currentCadDocumentWidget()) {
         return documentWidget->document();
     }
     return {};
 }
 
-pyraqt::core::ModelSelectionInfo EditorWorkspaceWidget::currentModelSelection() const
+pyraqt::core::CadSelectionInfo EditorWorkspaceWidget::currentCadSelection() const
 {
-    if (auto *documentWidget = currentModelDocumentWidget()) {
+    if (auto *documentWidget = currentCadDocumentWidget()) {
         return documentWidget->selectionInfo();
     }
     return {};
@@ -435,11 +435,11 @@ ScriptEditorWidget *EditorWorkspaceWidget::createEditor()
     return editor;
 }
 
-ModelDocumentWidget *EditorWorkspaceWidget::createModelDocumentWidget(const pyraqt::core::ModelDocument &document)
+CadDocumentWidget *EditorWorkspaceWidget::createCadDocumentWidget(const pyraqt::core::CadDocument &document)
 {
-    auto *widget = new ModelDocumentWidget(this);
+    auto *widget = new CadDocumentWidget(this);
     widget->setDocument(document);
-    connectModelDocumentWidget(widget);
+    connectCadDocumentWidget(widget);
     return widget;
 }
 
@@ -474,11 +474,11 @@ void EditorWorkspaceWidget::updateTabTitle(int index)
             title.append('*');
         }
         toolTip = editor->currentFilePath();
-    } else if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+    } else if (auto *documentWidget = qobject_cast<CadDocumentWidget *>(widget)) {
         toolTip = documentWidget->document().filePath;
         title = QFileInfo(toolTip).fileName();
         if (title.isEmpty()) {
-            title = tr("Model");
+            title = tr("CAD");
         }
     } else if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
         toolTip = placeholder->filePath();
@@ -492,18 +492,18 @@ void EditorWorkspaceWidget::updateTabTitle(int index)
     m_tabWidget->setTabToolTip(index, toolTip);
 }
 
-void EditorWorkspaceWidget::connectModelDocumentWidget(ModelDocumentWidget *widget)
+void EditorWorkspaceWidget::connectCadDocumentWidget(CadDocumentWidget *widget)
 {
-    connect(widget, &ModelDocumentWidget::displayModeChanged, this, [this](pyraqt::core::ModelDisplayMode) {
+    connect(widget, &CadDocumentWidget::displayModeChanged, this, [this](pyraqt::core::CadDisplayMode) {
         emitCurrentWidgetState();
     });
-    connect(widget, &ModelDocumentWidget::selectionModeChanged, this, [this](pyraqt::core::ModelSelectionMode) {
+    connect(widget, &CadDocumentWidget::selectionModeChanged, this, [this](pyraqt::core::CadSelectionMode) {
         emitCurrentWidgetState();
     });
-    connect(widget, &ModelDocumentWidget::selectionInfoChanged, this, [this](const pyraqt::core::ModelSelectionInfo &selection) {
-        emit modelSelectionChanged(selection);
+    connect(widget, &CadDocumentWidget::selectionInfoChanged, this, [this](const pyraqt::core::CadSelectionInfo &selection) {
+        emit cadSelectionChanged(selection);
     });
-    connect(widget, &ModelDocumentWidget::statusMessageChanged, this, [this](const QString &) {
+    connect(widget, &CadDocumentWidget::statusMessageChanged, this, [this](const QString &) {
         emitCurrentWidgetState();
     });
 }
@@ -513,7 +513,7 @@ QString EditorWorkspaceWidget::filePathForWidget(QWidget *widget) const
     if (auto *editor = qobject_cast<ScriptEditorWidget *>(widget)) {
         return editor->currentFilePath();
     }
-    if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+    if (auto *documentWidget = qobject_cast<CadDocumentWidget *>(widget)) {
         return documentWidget->document().filePath;
     }
     if (auto *placeholder = qobject_cast<EditorPlaceholderWidget *>(widget)) {
@@ -527,8 +527,8 @@ EditorWorkspaceWidget::DocumentKind EditorWorkspaceWidget::documentKindForWidget
     if (qobject_cast<ScriptEditorWidget *>(widget) != nullptr) {
         return DocumentKind::Text;
     }
-    if (qobject_cast<ModelDocumentWidget *>(widget) != nullptr) {
-        return DocumentKind::Model;
+    if (qobject_cast<CadDocumentWidget *>(widget) != nullptr) {
+        return DocumentKind::Cad;
     }
     if (qobject_cast<EditorPlaceholderWidget *>(widget) != nullptr) {
         return DocumentKind::PreviewUnavailable;
@@ -589,18 +589,18 @@ void EditorWorkspaceWidget::emitCurrentWidgetState()
         emit documentModificationChanged(editor->isModified());
         emit editorAvailabilityChanged(editor->isAvailable());
         emit currentCursorChanged(editor->currentLine(), editor->currentColumn());
-        emit modelDocumentChanged({});
-        emit modelSelectionChanged({});
+        emit cadDocumentChanged({});
+        emit cadSelectionChanged({});
         return;
     }
 
-    if (auto *documentWidget = qobject_cast<ModelDocumentWidget *>(widget)) {
+    if (auto *documentWidget = qobject_cast<CadDocumentWidget *>(widget)) {
         emit currentFilePathChanged(documentWidget->document().filePath);
         emit documentModificationChanged(false);
         emit editorAvailabilityChanged(false);
         emit currentCursorChanged(0, 0);
-        emit modelDocumentChanged(documentWidget->document());
-        emit modelSelectionChanged(documentWidget->selectionInfo());
+        emit cadDocumentChanged(documentWidget->document());
+        emit cadSelectionChanged(documentWidget->selectionInfo());
         return;
     }
 
@@ -609,8 +609,8 @@ void EditorWorkspaceWidget::emitCurrentWidgetState()
         emit documentModificationChanged(false);
         emit editorAvailabilityChanged(false);
         emit currentCursorChanged(-1, -1);
-        emit modelDocumentChanged({});
-        emit modelSelectionChanged({});
+        emit cadDocumentChanged({});
+        emit cadSelectionChanged({});
         return;
     }
 
@@ -618,8 +618,8 @@ void EditorWorkspaceWidget::emitCurrentWidgetState()
     emit documentModificationChanged(false);
     emit editorAvailabilityChanged(false);
     emit currentCursorChanged(0, 0);
-    emit modelDocumentChanged({});
-    emit modelSelectionChanged({});
+    emit cadDocumentChanged({});
+    emit cadSelectionChanged({});
 }
 
 void EditorWorkspaceWidget::showTabContextMenu(const QPoint &position)

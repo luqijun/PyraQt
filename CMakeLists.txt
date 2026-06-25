@@ -70,11 +70,11 @@ add_library(pyraqt_core STATIC
     src/core/i18n/i18n_manager.h
     src/core/logging/log_manager.cpp
     src/core/logging/log_manager.h
-    src/core/modeling/model_import_manager.cpp
-    src/core/modeling/model_import_manager.h
-    src/core/modeling/model_property_service.cpp
-    src/core/modeling/model_property_service.h
-    src/core/modeling/model_types.h
+    src/core/cad/cad_import_manager.cpp
+    src/core/cad/cad_import_manager.h
+    src/core/cad/cad_property_service.cpp
+    src/core/cad/cad_property_service.h
+    src/core/cad/cad_types.h
     src/core/plugin/iplugin.h
     src/core/plugin/plugin_context.cpp
     src/core/plugin/plugin_context.h
@@ -157,20 +157,20 @@ add_executable(pyraqt
     src/ui/dialogs/python_tools_dialog.h
     src/ui/editor/editor_workspace_widget.cpp
     src/ui/editor/editor_workspace_widget.h
-    src/ui/editor/model_document_widget.cpp
-    src/ui/editor/model_document_widget.h
-    src/ui/editor/model_summary_widget.cpp
-    src/ui/editor/model_summary_widget.h
-    src/ui/editor/occt_model_view_widget.cpp
-    src/ui/editor/occt_model_view_widget.h
+    src/ui/editor/cad_document_widget.cpp
+    src/ui/editor/cad_document_widget.h
+    src/ui/editor/cad_summary_widget.cpp
+    src/ui/editor/cad_summary_widget.h
+    src/ui/editor/occt_cad_view_widget.cpp
+    src/ui/editor/occt_cad_view_widget.h
     src/ui/editor/editor_placeholder_widget.cpp
     src/ui/editor/editor_placeholder_widget.h
     src/ui/editor/script_editor_widget.cpp
     src/ui/editor/script_editor_widget.h
     src/ui/mainwindow/main_window.cpp
     src/ui/mainwindow/main_window.h
-    src/ui/panels/properties/model_properties_panel.cpp
-    src/ui/panels/properties/model_properties_panel.h
+    src/ui/panels/properties/cad_properties_panel.cpp
+    src/ui/panels/properties/cad_properties_panel.h
     src/ui/panels/files/file_browser_panel.cpp
     src/ui/panels/files/file_browser_panel.h
     src/ui/panels/plugins/plugin_manager_panel.cpp

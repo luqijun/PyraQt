@@ -1,6 +1,6 @@
-#include "ui/panels/properties/model_properties_panel.h"
+#include "ui/panels/properties/cad_properties_panel.h"
 
-#include "core/modeling/model_property_service.h"
+#include "core/cad/cad_property_service.h"
 
 #include <QEvent>
 #include <QFormLayout>
@@ -18,10 +18,10 @@ constexpr int kPropertiesMinimumWidth = 280;
 
 }
 
-ModelPropertiesPanel::ModelPropertiesPanel(QWidget *parent)
+CadPropertiesPanel::CadPropertiesPanel(QWidget *parent)
     : QWidget(parent)
 {
-    setObjectName(QStringLiteral("modelPropertiesPanel"));
+    setObjectName(QStringLiteral("cadPropertiesPanel"));
     setMinimumWidth(kPropertiesMinimumWidth);
 
     auto *layout = new QVBoxLayout(this);
@@ -62,30 +62,30 @@ ModelPropertiesPanel::ModelPropertiesPanel(QWidget *parent)
     showPlaceholder(tr("Select a model to inspect its properties."));
 }
 
-void ModelPropertiesPanel::setModelDocument(const pyraqt::core::ModelDocument &document)
+void CadPropertiesPanel::setCadDocument(const pyraqt::core::CadDocument &document)
 {
     setValue(m_stateLabel, document.statusMessage);
     setValue(m_fileLabel, document.filePath);
-    setValue(m_formatLabel, pyraqt::core::ModelPropertyService::formatModelFormat(document.summary.format));
+    setValue(m_formatLabel, pyraqt::core::CadPropertyService::formatFormat(document.summary.format));
     setValue(m_boundsLabel, document.boundingBoxText);
-    setValue(m_measureLabel, pyraqt::core::ModelPropertyService::formatMeasureSummary(document.measurements));
+    setValue(m_measureLabel, pyraqt::core::CadPropertyService::formatMeasureSummary(document.measurements));
     setValue(m_solidsLabel, QString::number(document.summary.solidCount));
     setValue(m_facesLabel, QString::number(document.summary.faceCount));
     setValue(m_edgesLabel, QString::number(document.summary.edgeCount));
 }
 
-void ModelPropertiesPanel::setSelectionInfo(const pyraqt::core::ModelSelectionInfo &selection)
+void CadPropertiesPanel::setSelectionInfo(const pyraqt::core::CadSelectionInfo &selection)
 {
-    setValue(m_selectionTypeLabel, pyraqt::core::ModelPropertyService::formatSelectionType(selection.kind));
+    setValue(m_selectionTypeLabel, pyraqt::core::CadPropertyService::formatSelectionType(selection.kind));
     setValue(m_selectionLabel, selection.label);
     setValue(m_selectionBoundsLabel, selection.boundingBoxText);
     const QString measureText = selection.measureText.isEmpty()
-        ? pyraqt::core::ModelPropertyService::formatMeasureSummary(selection.measurements)
+        ? pyraqt::core::CadPropertyService::formatMeasureSummary(selection.measurements)
         : selection.measureText;
     setValue(m_selectionMeasureLabel, measureText);
 }
 
-void ModelPropertiesPanel::clearSelection()
+void CadPropertiesPanel::clearSelection()
 {
     setValue(m_selectionTypeLabel, QStringLiteral("None"));
     setValue(m_selectionLabel, QString());
@@ -93,7 +93,7 @@ void ModelPropertiesPanel::clearSelection()
     setValue(m_selectionMeasureLabel, QString());
 }
 
-void ModelPropertiesPanel::showPlaceholder(const QString &message)
+void CadPropertiesPanel::showPlaceholder(const QString &message)
 {
     setValue(m_stateLabel, message);
     setValue(m_fileLabel, QString());
@@ -106,7 +106,7 @@ void ModelPropertiesPanel::showPlaceholder(const QString &message)
     clearSelection();
 }
 
-void ModelPropertiesPanel::setValue(QLabel *label, const QString &value)
+void CadPropertiesPanel::setValue(QLabel *label, const QString &value)
 {
     if (label != nullptr) {
         const QString displayValue = value.isEmpty() ? tr("-") : value;
@@ -116,7 +116,7 @@ void ModelPropertiesPanel::setValue(QLabel *label, const QString &value)
     }
 }
 
-QLabel *ModelPropertiesPanel::createValueLabel(const QString &objectName)
+QLabel *CadPropertiesPanel::createValueLabel(const QString &objectName)
 {
     auto *label = new QLabel(this);
     label->setObjectName(objectName);
@@ -128,7 +128,7 @@ QLabel *ModelPropertiesPanel::createValueLabel(const QString &objectName)
     return label;
 }
 
-bool ModelPropertiesPanel::eventFilter(QObject *watched, QEvent *event)
+bool CadPropertiesPanel::eventFilter(QObject *watched, QEvent *event)
 {
     if (event != nullptr
         && (event->type() == QEvent::Resize || event->type() == QEvent::Show || event->type() == QEvent::LayoutRequest)) {
@@ -140,7 +140,7 @@ bool ModelPropertiesPanel::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
-void ModelPropertiesPanel::changeEvent(QEvent *event)
+void CadPropertiesPanel::changeEvent(QEvent *event)
 {
     if (event != nullptr && event->type() == QEvent::LanguageChange) {
         retranslateUi();
@@ -148,7 +148,7 @@ void ModelPropertiesPanel::changeEvent(QEvent *event)
     QWidget::changeEvent(event);
 }
 
-void ModelPropertiesPanel::retranslateUi()
+void CadPropertiesPanel::retranslateUi()
 {
     if (m_form == nullptr) {
         return;
@@ -167,7 +167,7 @@ void ModelPropertiesPanel::retranslateUi()
     m_form->setWidget(11, QFormLayout::LabelRole, new QLabel(tr("Measure"), this));
 }
 
-void ModelPropertiesPanel::updateDisplayedValue(QLabel *label)
+void CadPropertiesPanel::updateDisplayedValue(QLabel *label)
 {
     if (label == nullptr) {
         return;

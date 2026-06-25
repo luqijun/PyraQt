@@ -4,7 +4,7 @@
 #include "core/config/config_manager.h"
 #include "core/i18n/i18n_manager.h"
 #include "core/logging/log_manager.h"
-#include "core/modeling/model_import_manager.h"
+#include "core/cad/cad_import_manager.h"
 #include "core/plugin/plugin_manager.h"
 #include "core/runtime/crash_recovery_manager.h"
 #include "core/scripting/python/pyra_api_bridge.h"
@@ -38,7 +38,7 @@ bool Application::initialize()
 
     m_configManager = std::make_unique<core::ConfigManager>();
     m_logManager = std::make_unique<core::LogManager>();
-    m_modelImportManager = std::make_unique<core::ModelImportManager>();
+    m_cadImportManager = std::make_unique<core::CadImportManager>();
     m_themeManager = std::make_unique<core::ThemeManager>(m_qtApplication);
     m_i18nManager = std::make_unique<core::I18nManager>(m_qtApplication);
     m_pythonRuntimeManager = std::make_unique<core::PythonRuntimeManager>(*m_configManager);
@@ -131,7 +131,7 @@ bool Application::initialize()
     m_mainWindow = std::make_unique<ui::MainWindow>(
         *m_configManager,
         *m_logManager,
-        *m_modelImportManager,
+        *m_cadImportManager,
         *m_themeManager,
         *m_i18nManager,
         *m_pythonRuntimeManager,

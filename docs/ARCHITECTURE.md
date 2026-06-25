@@ -11,13 +11,13 @@
 - `ui`: 主窗口、dock、菜单、状态栏
 
 当前 `Application` 在启动时装配 `ConfigManager`、`LogManager`、`ThemeManager`、`I18nManager`、`PythonRuntimeManager`、`PyraApiBridge`、`ScriptExecutionManager`、`CommandManager`、`PluginManager`、`UpdateManager`、`CrashRecoveryManager` 和 `WorkspaceManager`，并在退出时统一保存窗口布局与工作区会话。
-当构建启用 OCCT 时，还会装配 `ModelImportManager` 用于 STEP/BREP 导入，并由 UI 层创建真实 `V3d/AIS` 视口用于模型浏览。
+当构建启用 OCCT 时，还会装配 `CadImportManager` 用于 STEP/BREP 导入，并由 UI 层创建真实 `V3d/AIS` 视口用于模型浏览。
 
 ## 核心服务
 
 - `ConfigManager`: JSON 文件保存应用偏好，`QSettings` 保存窗口几何和布局状态。
 - `LogManager`: 统一处理日志输出，默认使用 Qt 文件日志；检测到 `spdlog` 时可启用增强输出。
-- `ModelImportManager`: 检测并读取 `.stp/.step/.brep` 文件，构造可长期持有的模型文档、统计基础拓扑摘要并提取基础几何量；无 OCCT 时返回禁用提示。
+- `CadImportManager`: 检测并读取 `.stp/.step/.brep` 文件，构造可长期持有的模型文档、统计基础拓扑摘要并提取基础几何量；无 OCCT 时返回禁用提示。
 - `ThemeManager`: 通过 QSS 在 Light / Dark 主题间切换。
 - `I18nManager`: 加载 `translations/` 下的 `.qm` 文件，实现运行时语言切换。
 - `PythonRuntimeManager`: 对齐 QGIS `QgsPythonUtils` 的主进程 CPython 托管层，负责解释器初始化、`sys.path`、共享 globals、GIL 封装、traceback、stdout/stderr 重定向和 Python 安全/执行配置。

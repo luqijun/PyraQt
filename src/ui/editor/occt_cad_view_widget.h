@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/modeling/model_types.h"
+#include "core/cad/cad_types.h"
 
 #include <QWidget>
 
@@ -22,28 +22,28 @@ class V3d_Viewer;
 
 namespace pyraqt::ui {
 
-class OcctModelViewWidget final : public QWidget {
+class OcctCadViewWidget final : public QWidget {
     Q_OBJECT
 
 public:
-    explicit OcctModelViewWidget(QWidget *parent = nullptr);
-    ~OcctModelViewWidget() override;
+    explicit OcctCadViewWidget(QWidget *parent = nullptr);
+    ~OcctCadViewWidget() override;
 
-    void setDocument(const pyraqt::core::ModelDocument &document);
-    void setDisplayMode(pyraqt::core::ModelDisplayMode mode);
-    void setSelectionMode(pyraqt::core::ModelSelectionMode mode);
+    void setDocument(const pyraqt::core::CadDocument &document);
+    void setDisplayMode(pyraqt::core::CadDisplayMode mode);
+    void setSelectionMode(pyraqt::core::CadSelectionMode mode);
     void fitAll();
     void setStandardView(const QString &viewKey);
     void clearSelection();
 
-    [[nodiscard]] pyraqt::core::ModelDocument document() const;
-    [[nodiscard]] pyraqt::core::ModelSelectionInfo selectionInfo() const;
+    [[nodiscard]] pyraqt::core::CadDocument document() const;
+    [[nodiscard]] pyraqt::core::CadSelectionInfo selectionInfo() const;
 
 signals:
-    void displayModeChanged(pyraqt::core::ModelDisplayMode mode);
-    void selectionModeChanged(pyraqt::core::ModelSelectionMode mode);
-    void selectionInfoChanged(const pyraqt::core::ModelSelectionInfo &selection);
-    void hoverInfoChanged(const pyraqt::core::ModelSelectionInfo &selection);
+    void displayModeChanged(pyraqt::core::CadDisplayMode mode);
+    void selectionModeChanged(pyraqt::core::CadSelectionMode mode);
+    void selectionInfoChanged(const pyraqt::core::CadSelectionInfo &selection);
+    void hoverInfoChanged(const pyraqt::core::CadSelectionInfo &selection);
     void statusMessageChanged(const QString &message);
 
 private:
@@ -64,15 +64,15 @@ private:
     void applySelectionMode();
     void updateHoverInfo(int x, int y);
     void refreshSelectionInfo();
-    [[nodiscard]] pyraqt::core::ModelSelectionInfo buildSelectionInfo(bool selected) const;
+    [[nodiscard]] pyraqt::core::CadSelectionInfo buildSelectionInfo(bool selected) const;
 
     bool m_isRotating = false;
     bool m_isPanning = false;
     int m_lastMouseX = 0;
     int m_lastMouseY = 0;
 
-    pyraqt::core::ModelDocument m_document;
-    pyraqt::core::ModelSelectionInfo m_selectionInfo;
+    pyraqt::core::CadDocument m_document;
+    pyraqt::core::CadSelectionInfo m_selectionInfo;
 
 #if PYRAQT_HAS_OCCT
     Handle(Aspect_DisplayConnection) m_displayConnection;

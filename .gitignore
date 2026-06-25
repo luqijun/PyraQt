@@ -39,7 +39,7 @@ qrc_*.cpp
 build.ninja
 
 # IDE and editor files
-.vscode/
+# .vscode/
 .idea/
 *.swp
 *.swo
@@ -77,3 +77,4 @@ install_manifest.txt
 .clang-tidy
 
 QGIS
+.codex

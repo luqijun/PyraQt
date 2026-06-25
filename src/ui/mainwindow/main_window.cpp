@@ -5,9 +5,9 @@
 #include "core/config/config_manager.h"
 #include "core/i18n/i18n_manager.h"
 #include "core/logging/log_manager.h"
-#include "core/modeling/model_import_manager.h"
-#include "core/modeling/model_property_service.h"
-#include "core/modeling/model_types.h"
+#include "core/cad/cad_import_manager.h"
+#include "core/cad/cad_property_service.h"
+#include "core/cad/cad_types.h"
 #include "core/plugin/plugin_manager.h"
 #include "core/runtime/crash_recovery_manager.h"
 #include "core/scripting/python/python_runtime_manager.h"
@@ -23,10 +23,10 @@
 #include "ui/common/icon_utils.h"
 #include "ui/editor/editor_placeholder_widget.h"
 #include "ui/editor/editor_workspace_widget.h"
-#include "ui/editor/model_document_widget.h"
+#include "ui/editor/cad_document_widget.h"
 #include "ui/editor/script_editor_widget.h"
 #include "ui/panels/files/file_browser_panel.h"
-#include "ui/panels/properties/model_properties_panel.h"
+#include "ui/panels/properties/cad_properties_panel.h"
 #include "ui/panels/plugins/plugin_manager_panel.h"
 #include "ui/panels/python/python_console_widget.h"
 
@@ -58,7 +58,7 @@ namespace pyraqt::ui {
 MainWindow::MainWindow(
     core::ConfigManager &configManager,
     core::LogManager &logManager,
-    core::ModelImportManager &modelImportManager,
+    core::CadImportManager &cadImportManager,
     core::ThemeManager &themeManager,
     core::I18nManager &i18nManager,
     core::PythonRuntimeManager &pythonRuntimeManager,
@@ -72,7 +72,7 @@ MainWindow::MainWindow(
     : QMainWindow(parent)
     , m_configManager(configManager)
     , m_logManager(logManager)
-    , m_modelImportManager(modelImportManager)
+    , m_cadImportManager(cadImportManager)
     , m_themeManager(themeManager)
     , m_i18nManager(i18nManager)
     , m_pythonRuntimeManager(pythonRuntimeManager)
@@ -201,7 +201,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::createCentralEditor()
 {
-    m_workspaceWidget = new EditorWorkspaceWidget(m_themeManager, m_modelImportManager, &m_pythonRuntimeManager, this);
+    m_workspaceWidget = new EditorWorkspaceWidget(m_themeManager, m_cadImportManager, &m_pythonRuntimeManager, this);
     m_workspaceWidget->setObjectName(QStringLiteral("editorWorkspace"));
     setCentralWidget(m_workspaceWidget);
 
@@ -248,7 +248,7 @@ void MainWindow::createCentralEditor()
             }
         }
     });
-    connect(m_workspaceWidget, &EditorWorkspaceWidget::modelDocumentChanged, this, [this](const core::ModelDocument &document) {
+    connect(m_workspaceWidget, &EditorWorkspaceWidget::cadDocumentChanged, this, [this](const core::CadDocument &document) {
         if (m_documentStatusLabel == nullptr) {
             return;
         }
@@ -256,40 +256,40 @@ void MainWindow::createCentralEditor()
             if (m_workspaceWidget != nullptr
                 && m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::PreviewUnavailable) {
                 m_documentStatusLabel->setText(tr("Document: Preview Unavailable"));
-                updateModelActionStates();
+                updateCadActionStates();
                 return;
             }
-            if (m_modelPropertiesPanel != nullptr) {
-                m_modelPropertiesPanel->showPlaceholder(tr("Select a model to inspect its properties."));
+            if (m_cadPropertiesPanel != nullptr) {
+                m_cadPropertiesPanel->showPlaceholder(tr("Select a model to inspect its properties."));
             }
-            updateModelActionStates();
+            updateCadActionStates();
             return;
         }
         m_documentStatusLabel->setText(document.isValid ? tr("Document: Model Loaded") : tr("Document: Load Failed"));
-        if (m_modelPropertiesPanel != nullptr) {
-            m_modelPropertiesPanel->setModelDocument(document);
-            m_modelPropertiesPanel->clearSelection();
+        if (m_cadPropertiesPanel != nullptr) {
+            m_cadPropertiesPanel->setCadDocument(document);
+            m_cadPropertiesPanel->clearSelection();
         }
         if (m_cursorStatusLabel != nullptr) {
             m_cursorStatusLabel->setText(
                 tr("%1 / %2")
-                    .arg(core::ModelPropertyService::formatDisplayMode(document.displayMode))
-                    .arg(core::ModelPropertyService::formatSelectionMode(document.selectionMode)));
+                    .arg(core::CadPropertyService::formatDisplayMode(document.displayMode))
+                    .arg(core::CadPropertyService::formatSelectionMode(document.selectionMode)));
         }
-        updateModelActionStates();
+        updateCadActionStates();
         updatePropertiesDockVisibility();
     });
-    connect(m_workspaceWidget, &EditorWorkspaceWidget::modelSelectionChanged, this, [this](const core::ModelSelectionInfo &selection) {
-        if (m_modelPropertiesPanel == nullptr) {
+    connect(m_workspaceWidget, &EditorWorkspaceWidget::cadSelectionChanged, this, [this](const core::CadSelectionInfo &selection) {
+        if (m_cadPropertiesPanel == nullptr) {
             return;
         }
         if (!selection.hasSelection) {
-            m_modelPropertiesPanel->clearSelection();
+            m_cadPropertiesPanel->clearSelection();
         } else {
-            m_modelPropertiesPanel->setSelectionInfo(selection);
+            m_cadPropertiesPanel->setSelectionInfo(selection);
         }
-        if (m_cursorStatusLabel != nullptr && selection.kind != core::ModelSelectionKind::None) {
-            m_cursorStatusLabel->setText(core::ModelPropertyService::formatSelectionType(selection.kind));
+        if (m_cursorStatusLabel != nullptr && selection.kind != core::CadSelectionKind::None) {
+            m_cursorStatusLabel->setText(core::CadPropertyService::formatSelectionType(selection.kind));
         }
     });
     connect(m_workspaceWidget, &EditorWorkspaceWidget::requestCloseConfirmation, this,
@@ -329,8 +329,8 @@ void MainWindow::createDocks()
     m_propertiesDock = new QDockWidget(tr("Properties"), this);
     m_propertiesDock->setObjectName(QStringLiteral("propertiesDock"));
     m_propertiesDock->setMinimumWidth(280);
-    m_modelPropertiesPanel = new ModelPropertiesPanel(m_propertiesDock);
-    m_propertiesDock->setWidget(m_modelPropertiesPanel);
+    m_cadPropertiesPanel = new CadPropertiesPanel(m_propertiesDock);
+    m_propertiesDock->setWidget(m_cadPropertiesPanel);
     addDockWidget(Qt::RightDockWidgetArea, m_propertiesDock);
     updatePropertiesDockVisibility();
 
@@ -513,7 +513,7 @@ void MainWindow::createScriptActions()
     m_selectVertexAction->setCheckable(true);
     m_stopScriptAction->setEnabled(false);
     updateTabActionStates();
-    updateModelActionStates();
+    updateCadActionStates();
 
     connect(m_newScriptAction, &QAction::triggered, this, [this] {
         m_workspaceWidget->newDocument();
@@ -563,22 +563,22 @@ void MainWindow::createScriptActions()
     connect(m_chooseFileBrowserRootAction, &QAction::triggered, this, &MainWindow::chooseFileBrowserRoot);
     connect(m_commandPaletteAction, &QAction::triggered, this, &MainWindow::openCommandPalette);
     connect(m_checkUpdatesAction, &QAction::triggered, this, &MainWindow::checkForUpdates);
-    connect(m_fitAllAction, &QAction::triggered, this, &MainWindow::fitModelView);
-    connect(m_viewFrontAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_viewBackAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_viewLeftAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_viewRightAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_viewTopAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_viewBottomAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_viewIsoAction, &QAction::triggered, this, &MainWindow::setModelViewPreset);
-    connect(m_wireframeAction, &QAction::triggered, this, &MainWindow::setModelDisplayMode);
-    connect(m_shadedAction, &QAction::triggered, this, &MainWindow::setModelDisplayMode);
-    connect(m_shadedEdgesAction, &QAction::triggered, this, &MainWindow::setModelDisplayMode);
-    connect(m_selectShapeAction, &QAction::triggered, this, &MainWindow::setModelSelectionMode);
-    connect(m_selectFaceAction, &QAction::triggered, this, &MainWindow::setModelSelectionMode);
-    connect(m_selectEdgeAction, &QAction::triggered, this, &MainWindow::setModelSelectionMode);
-    connect(m_selectVertexAction, &QAction::triggered, this, &MainWindow::setModelSelectionMode);
-    connect(m_clearSelectionAction, &QAction::triggered, this, &MainWindow::clearModelSelection);
+    connect(m_fitAllAction, &QAction::triggered, this, &MainWindow::fitCadView);
+    connect(m_viewFrontAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_viewBackAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_viewLeftAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_viewRightAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_viewTopAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_viewBottomAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_viewIsoAction, &QAction::triggered, this, &MainWindow::setCadViewPreset);
+    connect(m_wireframeAction, &QAction::triggered, this, &MainWindow::setCadDisplayMode);
+    connect(m_shadedAction, &QAction::triggered, this, &MainWindow::setCadDisplayMode);
+    connect(m_shadedEdgesAction, &QAction::triggered, this, &MainWindow::setCadDisplayMode);
+    connect(m_selectShapeAction, &QAction::triggered, this, &MainWindow::setCadSelectionMode);
+    connect(m_selectFaceAction, &QAction::triggered, this, &MainWindow::setCadSelectionMode);
+    connect(m_selectEdgeAction, &QAction::triggered, this, &MainWindow::setCadSelectionMode);
+    connect(m_selectVertexAction, &QAction::triggered, this, &MainWindow::setCadSelectionMode);
+    connect(m_clearSelectionAction, &QAction::triggered, this, &MainWindow::clearCadSelection);
     configureActionPresentation();
     applyActionIcons();
 }
@@ -740,17 +740,17 @@ void MainWindow::registerBuiltInCommands()
     m_commandManager.registerCommand(updateCommand);
 
     CommandDescriptor fitAllCommand;
-    fitAllCommand.id = QStringLiteral("builtin.model_fit_all");
+    fitAllCommand.id = QStringLiteral("builtin.cad_fit_all");
     fitAllCommand.ownerId = QStringLiteral("builtin");
     fitAllCommand.title = tr("Model: Fit All");
     fitAllCommand.description = tr("Fit the current model in view.");
     fitAllCommand.source = tr("Built-in");
     fitAllCommand.keywords = QStringList{QStringLiteral("model"), QStringLiteral("fit"), QStringLiteral("view")};
-    fitAllCommand.handler = [this] { fitModelView(); };
+    fitAllCommand.handler = [this] { fitCadView(); };
     m_commandManager.registerCommand(fitAllCommand);
 
-    const auto registerModelCommand = [this](const QString &id, const QString &title, const QString &description,
-                                         const QStringList &keywords, std::function<void()> handler) {
+    const auto registerCadCommand = [this](const QString &id, const QString &title, const QString &description,
+                                           const QStringList &keywords, std::function<void()> handler) {
         CommandDescriptor command;
         command.id = id;
         command.ownerId = QStringLiteral("builtin");
@@ -762,49 +762,49 @@ void MainWindow::registerBuiltInCommands()
         m_commandManager.registerCommand(command);
     };
 
-    registerModelCommand(QStringLiteral("builtin.model_view_front"), tr("Model: View Front"), tr("Switch to front view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_front"), tr("Model: View Front"), tr("Switch to front view."),
         {QStringLiteral("model"), QStringLiteral("front"), QStringLiteral("view")},
         [this] { m_viewFrontAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_view_back"), tr("Model: View Back"), tr("Switch to back view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_back"), tr("Model: View Back"), tr("Switch to back view."),
         {QStringLiteral("model"), QStringLiteral("back"), QStringLiteral("view")},
         [this] { m_viewBackAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_view_left"), tr("Model: View Left"), tr("Switch to left view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_left"), tr("Model: View Left"), tr("Switch to left view."),
         {QStringLiteral("model"), QStringLiteral("left"), QStringLiteral("view")},
         [this] { m_viewLeftAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_view_right"), tr("Model: View Right"), tr("Switch to right view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_right"), tr("Model: View Right"), tr("Switch to right view."),
         {QStringLiteral("model"), QStringLiteral("right"), QStringLiteral("view")},
         [this] { m_viewRightAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_view_top"), tr("Model: View Top"), tr("Switch to top view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_top"), tr("Model: View Top"), tr("Switch to top view."),
         {QStringLiteral("model"), QStringLiteral("top"), QStringLiteral("view")},
         [this] { m_viewTopAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_view_bottom"), tr("Model: View Bottom"), tr("Switch to bottom view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_bottom"), tr("Model: View Bottom"), tr("Switch to bottom view."),
         {QStringLiteral("model"), QStringLiteral("bottom"), QStringLiteral("view")},
         [this] { m_viewBottomAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_view_isometric"), tr("Model: View Isometric"), tr("Switch to isometric view."),
+    registerCadCommand(QStringLiteral("builtin.cad_view_isometric"), tr("Model: View Isometric"), tr("Switch to isometric view."),
         {QStringLiteral("model"), QStringLiteral("isometric"), QStringLiteral("view"), QStringLiteral("iso")},
         [this] { m_viewIsoAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_display_wireframe"), tr("Model: Wireframe"), tr("Display model in wireframe mode."),
+    registerCadCommand(QStringLiteral("builtin.cad_display_wireframe"), tr("Model: Wireframe"), tr("Display model in wireframe mode."),
         {QStringLiteral("model"), QStringLiteral("wireframe"), QStringLiteral("display")},
         [this] { m_wireframeAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_display_shaded"), tr("Model: Shaded"), tr("Display model in shaded mode."),
+    registerCadCommand(QStringLiteral("builtin.cad_display_shaded"), tr("Model: Shaded"), tr("Display model in shaded mode."),
         {QStringLiteral("model"), QStringLiteral("shaded"), QStringLiteral("display")},
         [this] { m_shadedAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_display_shaded_edges"), tr("Model: Shaded With Edges"),
+    registerCadCommand(QStringLiteral("builtin.cad_display_shaded_edges"), tr("Model: Shaded With Edges"),
         tr("Display model in shaded mode with edges."), {QStringLiteral("model"), QStringLiteral("shaded"), QStringLiteral("edges"), QStringLiteral("display")},
         [this] { m_shadedEdgesAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_select_shape"), tr("Model: Select Shape"), tr("Enable whole-shape selection."),
+    registerCadCommand(QStringLiteral("builtin.cad_select_shape"), tr("Model: Select Shape"), tr("Enable whole-shape selection."),
         {QStringLiteral("model"), QStringLiteral("select"), QStringLiteral("shape")},
         [this] { m_selectShapeAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_select_face"), tr("Model: Select Face"), tr("Enable face selection."),
+    registerCadCommand(QStringLiteral("builtin.cad_select_face"), tr("Model: Select Face"), tr("Enable face selection."),
         {QStringLiteral("model"), QStringLiteral("select"), QStringLiteral("face")},
         [this] { m_selectFaceAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_select_edge"), tr("Model: Select Edge"), tr("Enable edge selection."),
+    registerCadCommand(QStringLiteral("builtin.cad_select_edge"), tr("Model: Select Edge"), tr("Enable edge selection."),
         {QStringLiteral("model"), QStringLiteral("select"), QStringLiteral("edge")},
         [this] { m_selectEdgeAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_select_vertex"), tr("Model: Select Vertex"), tr("Enable vertex selection."),
+    registerCadCommand(QStringLiteral("builtin.cad_select_vertex"), tr("Model: Select Vertex"), tr("Enable vertex selection."),
         {QStringLiteral("model"), QStringLiteral("select"), QStringLiteral("vertex"), QStringLiteral("point")},
         [this] { m_selectVertexAction->trigger(); });
-    registerModelCommand(QStringLiteral("builtin.model_clear_selection"), tr("Model: Clear Selection"), tr("Clear the current model selection."),
+    registerCadCommand(QStringLiteral("builtin.cad_clear_selection"), tr("Model: Clear Selection"), tr("Clear the current model selection."),
         {QStringLiteral("model"), QStringLiteral("clear"), QStringLiteral("selection")},
         [this] { m_clearSelectionAction->trigger(); });
 }
@@ -836,16 +836,16 @@ void MainWindow::runCurrentScript()
     }
 }
 
-void MainWindow::fitModelView()
+void MainWindow::fitCadView()
 {
-    if (auto *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
+    if (auto *documentWidget = m_workspaceWidget->currentCadDocumentWidget()) {
         documentWidget->fitAll();
     }
 }
 
-void MainWindow::setModelViewPreset()
+void MainWindow::setCadViewPreset()
 {
-    if (auto *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
+    if (auto *documentWidget = m_workspaceWidget->currentCadDocumentWidget()) {
         QAction *action = qobject_cast<QAction *>(sender());
         if (action != nullptr) {
             documentWidget->setStandardView(action->data().toString());
@@ -853,42 +853,42 @@ void MainWindow::setModelViewPreset()
     }
 }
 
-void MainWindow::setModelDisplayMode()
+void MainWindow::setCadDisplayMode()
 {
-    if (auto *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
+    if (auto *documentWidget = m_workspaceWidget->currentCadDocumentWidget()) {
         QAction *action = qobject_cast<QAction *>(sender());
         if (action == m_wireframeAction) {
-            documentWidget->setDisplayMode(core::ModelDisplayMode::Wireframe);
+            documentWidget->setDisplayMode(core::CadDisplayMode::Wireframe);
         } else if (action == m_shadedAction) {
-            documentWidget->setDisplayMode(core::ModelDisplayMode::Shaded);
+            documentWidget->setDisplayMode(core::CadDisplayMode::Shaded);
         } else if (action == m_shadedEdgesAction) {
-            documentWidget->setDisplayMode(core::ModelDisplayMode::ShadedWithEdges);
+            documentWidget->setDisplayMode(core::CadDisplayMode::ShadedWithEdges);
         }
     }
 }
 
-void MainWindow::setModelSelectionMode()
+void MainWindow::setCadSelectionMode()
 {
-    if (auto *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
+    if (auto *documentWidget = m_workspaceWidget->currentCadDocumentWidget()) {
         QAction *action = qobject_cast<QAction *>(sender());
         if (action == m_selectShapeAction) {
-            documentWidget->setSelectionMode(core::ModelSelectionMode::Shape);
+            documentWidget->setSelectionMode(core::CadSelectionMode::Shape);
         } else if (action == m_selectFaceAction) {
-            documentWidget->setSelectionMode(core::ModelSelectionMode::Face);
+            documentWidget->setSelectionMode(core::CadSelectionMode::Face);
         } else if (action == m_selectEdgeAction) {
-            documentWidget->setSelectionMode(core::ModelSelectionMode::Edge);
+            documentWidget->setSelectionMode(core::CadSelectionMode::Edge);
         } else if (action == m_selectVertexAction) {
-            documentWidget->setSelectionMode(core::ModelSelectionMode::Vertex);
+            documentWidget->setSelectionMode(core::CadSelectionMode::Vertex);
         }
     }
 }
 
-void MainWindow::clearModelSelection()
+void MainWindow::clearCadSelection()
 {
-    if (auto *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
+    if (auto *documentWidget = m_workspaceWidget->currentCadDocumentWidget()) {
         documentWidget->clearSelection();
-    } else if (m_modelPropertiesPanel != nullptr) {
-        m_modelPropertiesPanel->clearSelection();
+    } else if (m_cadPropertiesPanel != nullptr) {
+        m_cadPropertiesPanel->clearSelection();
     }
 }
 
@@ -1368,7 +1368,7 @@ void MainWindow::retranslateUi()
         m_pythonStatusLabel->setText(tr("Python: %1").arg(m_pythonRuntimeManager.pythonVersion()));
     }
     if (m_documentStatusLabel != nullptr && m_workspaceWidget != nullptr) {
-        if (ModelDocumentWidget *documentWidget = m_workspaceWidget->currentModelDocumentWidget()) {
+        if (CadDocumentWidget *documentWidget = m_workspaceWidget->currentCadDocumentWidget()) {
             m_documentStatusLabel->setText(documentWidget->document().isValid ? tr("Document: Model Loaded") : tr("Document: Load Failed"));
         } else if (m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::PreviewUnavailable) {
             m_documentStatusLabel->setText(tr("Document: Preview Unavailable"));
@@ -1478,7 +1478,7 @@ void MainWindow::updatePropertiesDockVisibility()
         return;
     }
 
-    const bool shouldShow = m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::Model;
+    const bool shouldShow = m_workspaceWidget->currentDocumentKind() == EditorWorkspaceWidget::DocumentKind::Cad;
     m_propertiesDock->setVisible(shouldShow);
 }
 
@@ -1535,10 +1535,10 @@ void MainWindow::updateTabActionStates()
     }
 }
 
-void MainWindow::updateModelActionStates()
+void MainWindow::updateCadActionStates()
 {
-    const bool hasModel = m_workspaceWidget != nullptr && m_workspaceWidget->currentModelDocumentWidget() != nullptr;
-    const core::ModelDocument document = hasModel ? m_workspaceWidget->currentModelDocument() : core::ModelDocument{};
+    const bool hasModel = m_workspaceWidget != nullptr && m_workspaceWidget->currentCadDocumentWidget() != nullptr;
+    const core::CadDocument document = hasModel ? m_workspaceWidget->currentCadDocument() : core::CadDocument{};
     for (QAction *action : {m_fitAllAction, m_viewFrontAction, m_viewBackAction, m_viewLeftAction, m_viewRightAction, m_viewTopAction,
              m_viewBottomAction, m_viewIsoAction, m_wireframeAction, m_shadedAction, m_shadedEdgesAction,
              m_selectShapeAction, m_selectFaceAction, m_selectEdgeAction, m_selectVertexAction, m_clearSelectionAction}) {
@@ -1547,25 +1547,25 @@ void MainWindow::updateModelActionStates()
         }
     }
     if (m_wireframeAction != nullptr) {
-        m_wireframeAction->setChecked(document.displayMode == core::ModelDisplayMode::Wireframe);
+        m_wireframeAction->setChecked(document.displayMode == core::CadDisplayMode::Wireframe);
     }
     if (m_shadedAction != nullptr) {
-        m_shadedAction->setChecked(document.displayMode == core::ModelDisplayMode::Shaded);
+        m_shadedAction->setChecked(document.displayMode == core::CadDisplayMode::Shaded);
     }
     if (m_shadedEdgesAction != nullptr) {
-        m_shadedEdgesAction->setChecked(document.displayMode == core::ModelDisplayMode::ShadedWithEdges);
+        m_shadedEdgesAction->setChecked(document.displayMode == core::CadDisplayMode::ShadedWithEdges);
     }
     if (m_selectShapeAction != nullptr) {
-        m_selectShapeAction->setChecked(document.selectionMode == core::ModelSelectionMode::Shape);
+        m_selectShapeAction->setChecked(document.selectionMode == core::CadSelectionMode::Shape);
     }
     if (m_selectFaceAction != nullptr) {
-        m_selectFaceAction->setChecked(document.selectionMode == core::ModelSelectionMode::Face);
+        m_selectFaceAction->setChecked(document.selectionMode == core::CadSelectionMode::Face);
     }
     if (m_selectEdgeAction != nullptr) {
-        m_selectEdgeAction->setChecked(document.selectionMode == core::ModelSelectionMode::Edge);
+        m_selectEdgeAction->setChecked(document.selectionMode == core::CadSelectionMode::Edge);
     }
     if (m_selectVertexAction != nullptr) {
-        m_selectVertexAction->setChecked(document.selectionMode == core::ModelSelectionMode::Vertex);
+        m_selectVertexAction->setChecked(document.selectionMode == core::CadSelectionMode::Vertex);
     }
 }
 
